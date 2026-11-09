@@ -1,6 +1,8 @@
-// Ask a barber agent for a slot from the command line.
+// Ask a barber agent for a slot from the command line, then book it only if you say yes.
 // Usage: pnpm --filter @hitchpost/my-agent start [barberUrl] [service] [earliestISO] [latestISO]
-import { AskError, askForSlot } from "./ask.ts";
+import { createInterface } from "node:readline/promises";
+import { AskError, askForSlot, bookOffer } from "./ask.ts";
+import { Approval } from "./gate.ts";
 
 const [url = "http://127.0.0.1:41241", service = "haircut", earliest, latest] =
   process.argv.slice(2);
@@ -20,9 +22,28 @@ try {
   });
   // Every field below passed validation, so it holds no control characters.
   if (reply.kind === "offer") {
+    const receivedAt = Date.now();
     const price = (reply.priceCents / 100).toFixed(2);
     console.log(`Offer: ${reply.service} at ${reply.start} for ${price} ${reply.currency}`);
-    console.log("Nothing is booked until you approve it.");
+    console.log(`Held until ${reply.expiresAt}. Nothing is booked until you approve it.`);
+
+    // The person's yes, typed after seeing this exact offer, is the only way to an Approval.
+    const rl = createInterface({ input: process.stdin, output: process.stdout });
+    const answer = (await rl.question("Book it? (y/N) ")).trim().toLowerCase();
+    rl.close();
+    if (answer !== "y") {
+      console.log("Not booked.");
+    } else {
+      const approval = Approval.grant(reply, receivedAt);
+      if (!approval)
+        throw new AskError("That offer's hold ran out before you approved. Ask again.");
+      const booked = await bookOffer(url, approval);
+      console.log(
+        booked.kind === "booking_confirmed"
+          ? `Booked: ${booked.service} at ${booked.start}. Booking ${booked.bookingId}.`
+          : `Not booked: the barber agent said ${booked.reason}.`,
+      );
+    }
   } else if (reply.kind === "no_availability") {
     console.log(`No ${reply.service} slots in that window.`);
   } else {
