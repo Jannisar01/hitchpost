@@ -1,21 +1,23 @@
-{
+﻿{
   "name": "hitchpost",
   "private": true,
   "license": "MIT",
   "type": "module",
   "packageManager": "pnpm@10.33.0",
   "engines": {
-    "node": ">=24"
+    "node": "\u003e=24"
   },
   "scripts": {
     "check": "biome ci .",
     "format": "biome check --write .",
     "typecheck": "tsc",
-    "test": "node --test \"packages/*/src/**/*.test.ts\""
+    "test": "node --test \"packages/*/src/**/*.test.ts\"",
+    "docs:pdf": "node scripts/build-sad-pdf.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.6",
     "@types/node": "^24.19.2",
+    "marked": "^15.0.12",
     "typescript": "^7.0.2"
   }
 }
