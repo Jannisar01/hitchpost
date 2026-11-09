@@ -31,7 +31,9 @@ const MAX_DURATION_MINUTES = 24 * 60;
 const MAX_PRICE_CENTS = 10_000_000;
 
 // Strict ISO 8601 with an explicit zone. Date.parse alone accepts prose like "ignore this 2026".
-const ISO_INSTANT = /^(\d{4})-(\d{2})-(\d{2})T\d{2}:\d{2}(:\d{2}(\.\d{1,3})?)?(Z|[+-]\d{2}:\d{2})$/;
+// Hours 00-23 (no 24:00 rollover), minutes and seconds 00-59, offsets within the real range of -14:00 to +14:00.
+const ISO_INSTANT =
+  /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,3})?)?(Z|[+-](0\d|1[0-3]):[0-5]\d|[+-]14:00)$/;
 // Letters, digits, punctuation and spaces only: no newlines or terminal escape codes.
 const SAFE_TEXT = /^[^\p{C}]{1,200}$/u;
 

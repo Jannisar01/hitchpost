@@ -49,6 +49,10 @@ test("rejects bad availability requests", () => {
     { ...request, earliest: "1" },
     { ...request, earliest: "11/12/2026" },
     { ...request, earliest: "2026-02-30T10:00:00Z" }, // no such day
+    { ...request, earliest: "2026-11-12T24:00:00Z" }, // rolls into the next day
+    { ...request, earliest: "2026-11-12T17:60:00Z" },
+    { ...request, earliest: "2026-11-12T17:00:00+14:59" }, // no such offset
+    { ...request, earliest: "2026-11-12T17:00:00+15:00" },
     { ...request, earliest: request.latest, latest: request.earliest },
     { ...request, earliest: request.latest },
     { ...request, latest: "2027-01-01T00:00:00Z" }, // window longer than 31 days
