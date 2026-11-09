@@ -11,12 +11,15 @@ import { type Book, findFreeSlot } from "./book.ts";
 /** Answers availability requests with an offer. It never books: booking needs a human yes (ADR 0007). */
 export class BarberExecutor implements AgentExecutor {
   readonly book: Book;
+  readonly now: () => number;
 
-  constructor(book: Book) {
+  constructor(book: Book, now: () => number = Date.now) {
     this.book = book;
+    this.now = now;
   }
 
   async execute(ctx: RequestContext, bus: ExecutionEventBus): Promise<void> {
+    // One reply message per request. The SDK's request handler closes the bus after we return.
     bus.publish(
       AgentEvent.message({
         role: Role.ROLE_AGENT,
@@ -29,14 +32,19 @@ export class BarberExecutor implements AgentExecutor {
         referenceTaskIds: [],
       }),
     );
-    bus.finished();
   }
 
   reply(input: unknown): BarberReply {
     const request = parseAvailabilityRequest(input);
-    if (!request) return { kind: "rejected", reason: "expected an availability_request" };
+    if (!request) return { kind: "rejected", reason: "expected a valid availability_request" };
 
-    const slot = findFreeSlot(this.book, request.service, request.earliest, request.latest);
+    const slot = findFreeSlot(
+      this.book,
+      request.service,
+      request.earliest,
+      request.latest,
+      this.now(),
+    );
     if (!slot) return { kind: "no_availability", service: request.service };
 
     return {
@@ -50,5 +58,6 @@ export class BarberExecutor implements AgentExecutor {
     };
   }
 
+  // Replies are single messages, so there is never a running task to cancel.
   async cancelTask(): Promise<void> {}
 }

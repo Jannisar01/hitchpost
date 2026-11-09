@@ -1,4 +1,5 @@
 import type { Book } from "./book.ts";
+import { BarberExecutor } from "./executor.ts";
 import { startBarberAgent } from "./server.ts";
 
 const demoBook: Book = {
@@ -13,5 +14,5 @@ const demoBook: Book = {
 };
 
 const port = Number(process.env.PORT ?? 41241);
-const agent = await startBarberAgent("Main Street Barbers", demoBook, port);
+const agent = await startBarberAgent("Main Street Barbers", new BarberExecutor(demoBook), port);
 console.log(`Barber agent listening on ${agent.url}`);
