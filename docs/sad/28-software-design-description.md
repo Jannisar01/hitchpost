@@ -111,7 +111,7 @@ The SDK's JSON-RPC handler exposes `ListTasks`, `GetTask` and `CancelTask` (SDK 
 | `ListTasks`   | Refused with the A2A unsupported-operation error                                                  |
 | `CancelTask`  | Refused for booking tasks; a cancellation must be a `cancel_request` with its `bookingToken`      |
 
-`bookingToken` is derived as HMAC-SHA-256 over the `bookingId` with a server key, truncated to 128 bits and base64url encoded, so a duplicate request can be answered with the same token without storing it in clear. Only its hash is stored for lookup. A test asserts that no token appears in any task history the SDK stores.
+`bookingToken` is derived as HMAC-SHA-256 over the `bookingId` with a server key, base64url encoded (Built: `packages/barber-agent/src/executor.ts`), so a duplicate request is answered with the same token without the business storing it in its own tables. The token does appear in the stored Task, because the confirmation is the Task final message; per ADR 0021 that is acceptable because `ListTasks` is refused and reading a Task needs its taskId (test: "ListTasks and CancelTask are refused, so nobody can list or cancel other people's bookings").
 
 ### 5.2 Persistence: bookings are the source of truth
 
