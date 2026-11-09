@@ -24,3 +24,7 @@ Rules that follow from this:
 ## Consequences
 
 Slightly more taps for the person. In return, the product's core promise holds: agents do the talking, humans decide.
+
+## Status note (2026-11-08)
+
+Accepted, enforced from Phase 2. As of Phase 1, agents only make offers and nothing can be booked, so there is nothing to approve or log yet.

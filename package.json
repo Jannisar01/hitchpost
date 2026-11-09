@@ -8,14 +8,17 @@
     "node": ">=24"
   },
   "scripts": {
-    "check": "biome ci .",
+    "check": "biome ci . && node scripts/check-encoding.mjs",
     "format": "biome check --write .",
     "typecheck": "tsc",
-    "test": "node --test \"packages/*/src/**/*.test.ts\""
+    "test": "node --test \"packages/*/src/**/*.test.ts\"",
+    "docs:pdf": "node scripts/build-sad-pdf.mjs",
+    "docs:check": "node scripts/check-sad.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.6",
-    "@types/node": "^26.6.6",
+    "@types/node": "^24.19.2",
+    "marked": "^15.0.12",
     "typescript": "^7.0.2"
   }
 }

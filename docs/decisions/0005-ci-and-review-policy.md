@@ -24,3 +24,7 @@ I want every change checked automatically and reviewed before it lands, without 
 ## Consequences
 
 Every merged change has a green build and a review on record. The review step needs an `ANTHROPIC_API_KEY` repository secret. PRs from forks don't get secrets, so the review bot skips them and I review those by hand.
+
+## Status note (2026-11-08)
+
+Not enforced yet: the repository hasn't been pushed, so there is no branch protection and the review bot hasn't run. The setup steps are in the [Phase 1 audit](../audits/2026-11-08-phase-1.md#first-push-checklist). The required check is named `lint, typecheck, test`.

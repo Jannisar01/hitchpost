@@ -1,0 +1,18 @@
+{
+  "name": "@hitchpost/my-agent",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.ts"
+  },
+  "dependencies": {
+    "@a2a-js/sdk": "^1.3.0",
+    "@hitchpost/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@hitchpost/barber-agent": "workspace:*"
+  },
+  "exports": "./src/index.ts"
+}

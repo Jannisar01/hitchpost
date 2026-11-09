@@ -1,17 +1,29 @@
 # Decision records
 
-Each important choice gets a short record: the context, the decision, the options I turned down and the cost I accepted. Records are never edited to change history. If a decision changes, a new record supersedes the old one.
+Each important choice gets a short record: the context, the decision, the options I turned down and the cost I accepted. Records are never rewritten. Corrections and amendments are appended as dated notes at the end, so the original reasoning stays readable. If a decision is reversed, a new record supersedes the old one.
 
-| #                                      | Decision                                       | Status   |
-| -------------------------------------- | ---------------------------------------------- | -------- |
-| [0001](0001-record-decisions.md)       | Record decisions as short ADRs                 | Accepted |
-| [0002](0002-typescript-monorepo.md)    | TypeScript monorepo with pnpm                  | Accepted |
-| [0003](0003-build-on-a2a-and-mcp.md)   | Build on A2A for agent to agent, MCP for tools | Accepted |
-| [0004](0004-mit-open-source.md)        | Open source under MIT                          | Accepted |
-| [0005](0005-ci-and-review-policy.md)   | CI gates, AI review advises, human merges      | Accepted |
-| [0006](0006-working-codename.md)       | Working codename "Hitchpost"                   | Accepted |
-| [0007](0007-human-approval-gate.md)    | A human approval gate is mandatory             | Accepted |
-| [0008](0008-first-vertical-barbers.md) | First vertical: barber appointments            | Accepted |
-| [0009](0009-walking-skeleton.md)       | Start with a walking skeleton                  | Accepted |
+| #                                           | Decision                                                                      | Status                       |
+| ------------------------------------------- | ----------------------------------------------------------------------------- | ---------------------------- |
+| [0001](0001-record-decisions.md)            | Record decisions as short ADRs                                                | Accepted                     |
+| [0002](0002-typescript-monorepo.md)         | TypeScript monorepo with pnpm                                                 | Accepted                     |
+| [0003](0003-build-on-a2a-and-mcp.md)        | Build on A2A for agent to agent, MCP for tools                                | Accepted                     |
+| [0004](0004-mit-open-source.md)             | Open source under MIT                                                         | Accepted                     |
+| [0005](0005-ci-and-review-policy.md)        | CI gates, AI review advises, human merges                                     | Accepted                     |
+| [0006](0006-working-codename.md)            | Working codename "Hitchpost"                                                  | Accepted                     |
+| [0007](0007-human-approval-gate.md)         | A human approval gate is mandatory                                            | Accepted                     |
+| [0008](0008-first-vertical-barbers.md)      | First vertical: barber appointments                                           | Accepted                     |
+| [0009](0009-walking-skeleton.md)            | Start with a walking skeleton                                                 | Accepted                     |
+| [0010](0010-typed-data-parts-before-llm.md) | Agents exchange typed data, model comes later                                 | Accepted                     |
+| [0011](0011-in-memory-appointment-book.md)  | In-memory appointment book until a real tool                                  | Accepted                     |
+| [0012](0012-booking-protocol.md)            | Booking protocol: Messages for questions, Tasks for commitments               | Accepted, amended 2026-11-09 |
+| [0013](0013-approval-type.md)               | Approval is a type only the gate can create                                   | Proposed                     |
+| [0014](0014-hosting.md)                     | Hosting: one container platform plus managed Postgres, a subdomain per tenant | Proposed                     |
+| [0015](0015-origin-verification.md)         | The directory verifies origin; clients enforce the card's URL origin          | Proposed                     |
+| [0016](0016-compile-for-deployment.md)      | Compile packages for deployment                                               | Proposed                     |
+| [0017](0017-agent-authentication.md)        | Agent-to-agent authentication and signing                                     | Proposed                     |
+| [0018](0018-shop-time-zones.md)             | Shop time zones: IANA zone per business, UTC on the wire                      | Accepted                     |
+| [0019](0019-service-architecture.md)        | Service architecture: a modular monolith with separate agent hosts            | Accepted                     |
+| [0020](0020-protocol-first.md)              | Protocol first: no pricing, minimal MCP gateway in v1                         | Accepted                     |
+| [0021](0021-task-and-token-exposure.md)     | Refuse ListTasks; taskId and bookingToken are bearer secrets                  | Accepted                     |
 
 New record: copy the format of any existing one, take the next number, add it to this table.
