@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { offerMatches, parseAvailabilityRequest, parseBarberReply } from "./booking.ts";
+import {
+  confirmationMatches,
+  offerMatches,
+  parseAvailabilityRequest,
+  parseBarberReply,
+  parseBookingReply,
+  parseBookingRequest,
+} from "./booking.ts";
 
 const request = {
   kind: "availability_request",
@@ -17,6 +24,8 @@ const offer = {
   durationMinutes: 30,
   priceCents: 3000,
   currency: "USD",
+  issuedAt: "2026-11-12T16:00:00.000Z",
+  expiresAt: "2026-11-12T16:10:00.000Z",
 };
 
 test("accepts a well formed availability request", () => {
@@ -90,6 +99,8 @@ test("rejects bad barber replies", () => {
     { ...offer, priceCents: -1 },
     { ...offer, priceCents: 900_000_000_000 },
     { ...offer, currency: "dollars" },
+    { ...offer, expiresAt: offer.issuedAt }, // a hold must last some time
+    { ...offer, issuedAt: undefined },
   ]) {
     assert.equal(parseBarberReply(bad), undefined, JSON.stringify(bad));
   }
@@ -104,4 +115,63 @@ test("an offer only matches the request it answers", () => {
   assert.equal(offerMatches(req, { ...ok, service: "full colour" }), false);
   assert.equal(offerMatches(req, { ...ok, start: "2026-11-12T16:30:00.000Z" }), false);
   assert.equal(offerMatches(req, { ...ok, start: "2026-11-12T19:30:00.000Z" }), false);
+});
+
+const confirmed = {
+  kind: "booking_confirmed",
+  bookingId: "b1",
+  offerId: "o1",
+  service: "haircut",
+  start: "2026-11-12T17:30:00.000Z",
+  durationMinutes: 30,
+  priceCents: 3000,
+  currency: "USD",
+  bookingToken: "t0k",
+};
+
+test("parses booking requests and replies, dropping unknown fields", () => {
+  assert.deepEqual(parseBookingRequest({ kind: "booking_request", offerId: "o1", pay: 999 }), {
+    kind: "booking_request",
+    offerId: "o1",
+  });
+  assert.deepEqual(parseBookingReply({ ...confirmed, extra: "x" }), confirmed);
+  assert.deepEqual(parseBookingReply({ ...confirmed, duplicateOf: "task-1" }), {
+    ...confirmed,
+    duplicateOf: "task-1",
+  });
+  assert.deepEqual(
+    parseBookingReply({ kind: "booking_rejected", offerId: "o1", reason: "expired" }),
+    {
+      kind: "booking_rejected",
+      offerId: "o1",
+      reason: "expired",
+    },
+  );
+});
+
+test("rejects bad booking messages", () => {
+  for (const bad of [
+    { kind: "booking_request" },
+    { kind: "booking_request", offerId: "\u001b[2K" },
+  ]) {
+    assert.equal(parseBookingRequest(bad), undefined, JSON.stringify(bad));
+  }
+  for (const bad of [
+    { kind: "booking_rejected", offerId: "o1", reason: "because I said so" },
+    { ...confirmed, bookingToken: "" },
+    { ...confirmed, start: "soon" },
+    { ...confirmed, priceCents: -5 },
+  ]) {
+    assert.equal(parseBookingReply(bad), undefined, JSON.stringify(bad));
+  }
+});
+
+test("a confirmation must restate the approved offer exactly", () => {
+  const o = parseBarberReply(offer);
+  const c = parseBookingReply(confirmed);
+  assert.ok(o?.kind === "offer" && c?.kind === "booking_confirmed");
+  assert.equal(confirmationMatches(o, c), true);
+  assert.equal(confirmationMatches(o, { ...c, priceCents: 9000 }), false);
+  assert.equal(confirmationMatches(o, { ...c, start: "2026-11-12T18:00:00.000Z" }), false);
+  assert.equal(confirmationMatches(o, { ...c, offerId: "o2" }), false);
 });

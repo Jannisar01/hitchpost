@@ -17,6 +17,9 @@ export type Offer = {
   durationMinutes: number;
   priceCents: number;
   currency: string;
+  /** The business's clock is the authority (P-09): the slot is held from issuedAt until expiresAt (P-01). */
+  issuedAt: string;
+  expiresAt: string;
 };
 
 export type NoAvailability = { kind: "no_availability"; service: string };
@@ -75,19 +78,133 @@ export function parseBarberReply(value: unknown): BarberReply | undefined {
   }
   const { offerId, service, durationMinutes, priceCents, currency } = value;
   const start = toInstant(value.start);
+  const issuedAt = toInstant(value.issuedAt);
+  const expiresAt = toInstant(value.expiresAt);
   if (
     value.kind === "offer" &&
+    isSafeText(offerId) &&
+    isSafeText(service) &&
+    start &&
+    issuedAt &&
+    expiresAt &&
+    Date.parse(issuedAt) < Date.parse(expiresAt) &&
+    isCount(durationMinutes, 1, MAX_DURATION_MINUTES) &&
+    isCount(priceCents, 0, MAX_PRICE_CENTS) &&
+    typeof currency === "string" &&
+    /^[A-Z]{3}$/.test(currency)
+  ) {
+    return {
+      kind: "offer",
+      offerId,
+      service,
+      start,
+      durationMinutes,
+      priceCents,
+      currency,
+      issuedAt,
+      expiresAt,
+    };
+  }
+  return undefined;
+}
+
+// Committing to an offer (ADR 0012): questions are Messages, commitments are Tasks.
+
+export type BookingRequest = { kind: "booking_request"; offerId: string };
+
+export type BookingConfirmed = {
+  kind: "booking_confirmed";
+  bookingId: string;
+  offerId: string;
+  service: string;
+  start: string;
+  durationMinutes: number;
+  priceCents: number;
+  currency: string;
+  /** Presented later to cancel or reschedule. A bearer secret: see ADR 0021. */
+  bookingToken: string;
+  /** Set when this answers a resend of a booking_request that was already confirmed. */
+  duplicateOf?: string;
+};
+
+export const BOOKING_REJECT_REASONS = ["expired", "unknown_offer", "slot_taken", "other"] as const;
+export type BookingRejected = {
+  kind: "booking_rejected";
+  offerId: string;
+  reason: (typeof BOOKING_REJECT_REASONS)[number];
+};
+
+export type BookingReply = BookingConfirmed | BookingRejected;
+
+export function parseBookingRequest(value: unknown): BookingRequest | undefined {
+  if (!isObject(value) || value.kind !== "booking_request" || !isSafeText(value.offerId))
+    return undefined;
+  return { kind: "booking_request", offerId: value.offerId };
+}
+
+export function parseBookingReply(value: unknown): BookingReply | undefined {
+  if (!isObject(value)) return undefined;
+  if (
+    value.kind === "booking_rejected" &&
+    isSafeText(value.offerId) &&
+    BOOKING_REJECT_REASONS.includes(value.reason as BookingRejected["reason"])
+  ) {
+    return {
+      kind: "booking_rejected",
+      offerId: value.offerId,
+      reason: value.reason as BookingRejected["reason"],
+    };
+  }
+  const start = toInstant(value.start);
+  const {
+    bookingId,
+    offerId,
+    service,
+    durationMinutes,
+    priceCents,
+    currency,
+    bookingToken,
+    duplicateOf,
+  } = value;
+  if (
+    value.kind === "booking_confirmed" &&
+    isSafeText(bookingId) &&
     isSafeText(offerId) &&
     isSafeText(service) &&
     start &&
     isCount(durationMinutes, 1, MAX_DURATION_MINUTES) &&
     isCount(priceCents, 0, MAX_PRICE_CENTS) &&
     typeof currency === "string" &&
-    /^[A-Z]{3}$/.test(currency)
+    /^[A-Z]{3}$/.test(currency) &&
+    isSafeText(bookingToken) &&
+    (duplicateOf === undefined || isSafeText(duplicateOf))
   ) {
-    return { kind: "offer", offerId, service, start, durationMinutes, priceCents, currency };
+    return {
+      kind: "booking_confirmed",
+      bookingId,
+      offerId,
+      service,
+      start,
+      durationMinutes,
+      priceCents,
+      currency,
+      bookingToken,
+      ...(duplicateOf === undefined ? {} : { duplicateOf }),
+    };
   }
   return undefined;
+}
+
+/** A confirmation must restate the approved offer field for field before anyone writes it to a calendar. */
+export function confirmationMatches(offer: Offer, confirmed: BookingConfirmed): boolean {
+  return (
+    confirmed.offerId === offer.offerId &&
+    confirmed.service === offer.service &&
+    confirmed.start === offer.start &&
+    confirmed.durationMinutes === offer.durationMinutes &&
+    confirmed.priceCents === offer.priceCents &&
+    confirmed.currency === offer.currency
+  );
 }
 
 /** A well formed offer can still answer a different question. Check it answers ours. */
