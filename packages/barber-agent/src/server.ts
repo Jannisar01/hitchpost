@@ -1,17 +1,33 @@
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { A2A_PROTOCOL_VERSION, AGENT_CARD_PATH, type AgentCard } from "@a2a-js/sdk";
+import { UnsupportedOperationError } from "@a2a-js/sdk/errors";
 import { type AgentExecutor, DefaultRequestHandler, InMemoryTaskStore } from "@a2a-js/sdk/server";
 import { agentCardHandler, jsonRpcHandler, UserBuilder } from "@a2a-js/sdk/server/express";
 import express from "express";
 
 export type { Book, Booking, Service } from "./book.ts";
-export { BarberExecutor } from "./executor.ts";
+export { BarberExecutor, MAX_OPEN_HOLDS, OFFER_HOLD_MS } from "./executor.ts";
+
+/**
+ * The SDK serves ListTasks and CancelTask to every caller (proven in packages/e2e, F2).
+ * Listing would hand anyone every booking, and cancelling goes through cancel_request with its token.
+ */
+export class MethodPolicyHandler extends DefaultRequestHandler {
+  override async listTasks(): Promise<never> {
+    throw new UnsupportedOperationError("ListTasks is not offered by Hitchpost agents");
+  }
+
+  override async cancelTask(): Promise<never> {
+    throw new UnsupportedOperationError("Cancel a booking with cancel_request");
+  }
+}
 
 export function barberCard(name: string, url: string): AgentCard {
   return {
     name,
-    description: "Books appointments at this barbershop. Offers slots; a human confirms.",
+    description:
+      "Offers and books appointments at this barbershop. The person approves every booking.",
     supportedInterfaces: [
       { url, protocolBinding: "JSONRPC", tenant: "", protocolVersion: A2A_PROTOCOL_VERSION },
     ],
@@ -34,6 +50,17 @@ export function barberCard(name: string, url: string): AgentCard {
         outputModes: ["application/json"],
         securityRequirements: [],
       },
+      {
+        id: "book_appointment",
+        name: "Book a held offer",
+        description:
+          "Send a booking_request for a held offer; the Task completes with booking_confirmed or is rejected with booking_rejected.",
+        tags: ["booking", "barber"],
+        examples: [],
+        inputModes: ["application/json"],
+        outputModes: ["application/json"],
+        securityRequirements: [],
+      },
     ],
     documentationUrl: "",
     signatures: [],
@@ -46,7 +73,7 @@ export async function startBarberAgent(name: string, executor: AgentExecutor, po
   await new Promise<void>((resolve) => server.listen(port, "127.0.0.1", resolve));
   const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
-  const handler = new DefaultRequestHandler(
+  const handler = new MethodPolicyHandler(
     barberCard(name, `${url}/`),
     new InMemoryTaskStore(),
     executor,
