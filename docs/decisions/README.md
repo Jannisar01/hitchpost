@@ -24,5 +24,6 @@ Each important choice gets a short record: the context, the decision, the option
 | [0018](0018-shop-time-zones.md)             | Shop time zones: IANA zone per business, UTC on the wire                      | Accepted                     |
 | [0019](0019-service-architecture.md)        | Service architecture: a modular monolith with separate agent hosts            | Accepted                     |
 | [0020](0020-protocol-first.md)              | Protocol first: no pricing, minimal MCP gateway in v1                         | Accepted                     |
+| [0021](0021-task-and-token-exposure.md)     | Refuse ListTasks; taskId and bookingToken are bearer secrets                  | Accepted                     |
 
 New record: copy the format of any existing one, take the next number, add it to this table.
