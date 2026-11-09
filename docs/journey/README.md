@@ -84,6 +84,25 @@ Nothing is booked until you approve it.
 
 11 passing: slot finding (taken slots, rounding, closing time, closed days), message validation (good input, unknown fields dropped, seven kinds of bad input) and two end-to-end runs over A2A.
 
+---
+
+## 2026-11-08 · Audit before Phase 2
+
+Before building the approval gate on top of Phase 1, I stopped and ran a full audit. Five independent expert reviews ran in parallel: QA, security, architecture, DevOps and product/portfolio. Each one got the code, not my opinions, so none of them would just confirm what I already believed. I reproduced the top findings myself before accepting any of them.
+
+### What it found
+
+- **All checks green, but the tests were thin.** Five real bugs passed every test: offers not checked against the request, longer services overlapping bookings, lenient date parsing that lets free text into "typed" fields, terminal escape injection, and slots offered in the past.
+- **Two of those sit right where Phase 2 goes.** If my agent accepts any offer the other side sends, an approval prompt would show the counterparty's numbers, not mine. Building the gate first would have put it on a weak foundation.
+- **My docs claimed more than the repo had.** Examples: "CI blocks it from main" with no remote yet, and "agents agree on a slot" when the barber only offers.
+- **The product brief was challenged.** The approval gate is a trust floor, not a moat. Booking platforms are the real competition. Consumer cold start is the hard side.
+
+Full report: [audits/2026-11-08-phase-1.md](../audits/2026-11-08-phase-1.md).
+
+### Why audit now
+
+Phase 2 makes the system act on a person's behalf for the first time. That's the point where a quiet validation gap turns into a wrong booking, so it was the right moment to pay for a hard look.
+
 ### Next
 
-Phase 2: the approval gate. Offer, then my yes or no, then a booking, with an audit log and tests proving nothing books without approval.
+Fix the nine pre-Phase-2 findings test-first and correct the docs. Then Phase 2: the approval gate. Offer, then my yes or no, then a booking, with an audit log and tests proving nothing books without approval.
