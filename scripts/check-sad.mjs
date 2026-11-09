@@ -192,6 +192,39 @@ for (const f of files) {
   }
 }
 
+// 7. MoSCoW: 05 is the source. A user story in 24 must carry the highest priority among the requirements it traces to.
+const rank = { M: 4, S: 3, C: 2, W: 1 };
+const word = { Must: "M", Should: "S", Could: "C", "Won't": "W", "Won't this release": "W" };
+const moscow = new Map();
+let col = -1;
+for (const line of read(join(SAD, "05-requirements.md")).split("\n")) {
+  if (!line.startsWith("|")) {
+    col = -1;
+    continue;
+  }
+  const cells = line.split("|").map((c) => c.trim());
+  const h = cells.findIndex((c) => c === "MoSCoW");
+  if (h >= 0) {
+    col = h;
+    continue;
+  }
+  const id = cells[1]?.match(/^(N?FR-[A-Z0-9]+-\d{2})$/)?.[1];
+  const v = col >= 0 ? cells[col]?.match(/^\**([MSCW])\b/)?.[1] : undefined;
+  if (id && v) moscow.set(id, v);
+}
+const prd = join(SAD, "24-product-requirements-document.md");
+for (const { l, n } of bodyLines(read(prd))) {
+  const story = l.match(/^\*\*(US-\d{2})\b[^*]*\*\*\s*\((Must|Should|Could|Won't)/);
+  if (!story) continue;
+  const reqs = [...l.matchAll(/\b(N?FR-[A-Z0-9]+-\d{2})\b/g)]
+    .map((m) => m[1])
+    .filter((r) => moscow.has(r));
+  if (!reqs.length) continue;
+  const top = reqs.reduce((a, r) => (rank[moscow.get(r)] > rank[a] ? moscow.get(r) : a), "W");
+  if (word[story[2]] !== top)
+    fail(prd, n, `${story[1]} is ${story[2]} but its highest traced requirement in 05 is ${top}`);
+}
+
 if (problems.length) {
   console.error(problems.join("\n"));
   console.error(`\n${problems.length} problem(s) in docs/sad`);
