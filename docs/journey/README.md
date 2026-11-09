@@ -1,4 +1,4 @@
-﻿# Build journey
+# Build journey
 
 How Hitchpost went from a notebook page to production. I led the build with Claude Code as my engineering partner. I set the product direction, chose between options, reviewed every change and own what merged. Claude Code wrote most of the code to my specs. Each entry records what happened, the choices made and why.
 

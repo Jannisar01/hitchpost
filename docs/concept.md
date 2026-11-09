@@ -1,4 +1,4 @@
-﻿# Hitchpost: concept
+# Hitchpost: concept
 
 > Working codename. See [ADR 0006](decisions/0006-working-codename.md) for how to rename it. The formal version of this concept is [01 Vision and scope](sad/01-vision-and-scope.md).
 
