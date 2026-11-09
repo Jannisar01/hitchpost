@@ -1,5 +1,7 @@
 # Product and business brief
 
+> Superseded by [01 Vision and scope](sad/01-vision-and-scope.md) and [02 Business case](sad/02-business-case.md), which take in the Phase 1 audit's product findings. Kept as the original Phase 0 thinking.
+
 My product-manager and business-analyst read of Hitchpost before writing any product code. This is the document I hold each phase against.
 
 ## 1. Where the ground already is
