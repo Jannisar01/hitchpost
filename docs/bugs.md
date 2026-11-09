@@ -2,6 +2,15 @@
 
 Every real problem the project ran into: what happened, the root cause, the fix and what changed to stop it happening again. Newest first.
 
+## 2026-11-09 · Found by the SA&D engineering review
+
+### Dates at 24:00 and impossible offsets were accepted
+
+- **Problem:** `2026-11-12T24:00:00Z` passed validation and silently became the next day; offsets like `+14:59` and `+15:00` passed too.
+- **Root cause:** the strict ISO pattern checked digit counts, not ranges.
+- **Fix:** hours 00 to 23, minutes and seconds 00 to 59, offsets within -14:00 to +14:00.
+- **Prevention:** four new cases in the bad-request table test.
+
 ## 2026-11-08 · Found by the Phase 1 audit
 
 Details and reproductions: [audit report](audits/2026-11-08-phase-1.md). Each fix landed with a test that failed before it.
