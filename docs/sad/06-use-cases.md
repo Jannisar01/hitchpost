@@ -1,6 +1,15 @@
-# 05. Use cases
+# HP-SAD-06 · Use cases
 
-Step-by-step flows for each use case in the [index](README.md#use-case-list). UC-01 describes the system as built; the rest describe the design for their phase. Requirement IDs refer to [04. Requirements](04-requirements.md).
+| Field       | Value                                                                                   |
+| ----------- | --------------------------------------------------------------------------------------- |
+| Document ID | HP-SAD-06                                                                               |
+| Version     | 1.1                                                                                     |
+| Status      | Baselined for Phase 2                                                                   |
+| Date        | 2026-11-09                                                                              |
+| Owner       | Sanaullah Jannisar, product and engineering lead                                        |
+| Conforms to | ISO/IEC/IEEE 29148:2018 (operational scenarios); UML 2.5 use case and sequence notation |
+
+Step-by-step flows for use cases UC-01 to UC-10. UC-01 describes the system as built; the rest describe the design for their phase. Requirement IDs refer to [05. Requirements](05-requirements.md). The booking protocol behind UC-02 to UC-04 is [ADR 0012](../decisions/0012-booking-protocol.md); business rules (BR-) and states are in [07](07-process-and-behaviour-models.md); timing values are the normative parameters P-01 to P-20 in [00](00-document-control.md).
 
 Actors: **Dana** (customer), **Dana's agent**, **Marcus** (barber), **Marcus's agent** (barber agent), **Priya** (agent developer), **Sam** (operator), **Directory**.
 
@@ -70,28 +79,30 @@ sequenceDiagram
 **Phase 2.**
 
 - **Actors:** Dana, Dana's agent, Marcus's agent.
-- **Preconditions:** UC-01 produced a validated, matching offer. The barber agent stored it and is holding the slot until it expires.
+- **Preconditions:** UC-01 produced a validated, matching offer with `issuedAt` and `expiresAt`. The barber agent stored it as Held and blocks the slot until it expires (offer hold, P-01).
 - **Trigger:** Dana approves the offer.
-- **Postconditions:** the slot is booked in Marcus's book; both audit logs record offer, approval, request and confirmation; Dana's calendar has the appointment.
-- **Related:** FR-GATE-01 to FR-GATE-05, FR-BOOK-01, FR-BOOK-02, FR-APP-02, NFR-REL-02.
+- **Postconditions:** the slot is booked in Marcus's book; both audit logs record offer, approval, request and result with the correlation fields (`contextId`, `taskId`, `offerId`, `messageId`); Dana's calendar has the appointment (from Phase 4).
+- **Related:** FR-GATE-01 to FR-GATE-05, FR-BOOK-01, FR-BOOK-02, FR-APP-02, NFR-REL-02; BR-06 to BR-09, BR-18, BR-19.
 
 **Main flow**
 
-1. Dana's agent shows the offer using only validated fields, including when it expires (`expiresAt`).
+1. Dana's agent shows the offer using only validated fields, with the time left. Its local deadline is when it received the offer plus (`expiresAt` − `issuedAt`), less the clock margin (P-09), so clock skew can't let an approval arrive late.
 2. Dana approves. The approval gate creates an `Approval` bound to this `offerId` and `contextId` (only the gate can create one) and logs it.
-3. Her agent sends a `booking_request` (contract `hitchpost/1`) with the `offerId` in the same A2A context. The booking function only accepts an `Approval`.
-4. The barber agent opens an A2A Task and checks in one atomic step: the offer exists, is unexpired, belongs to this context, and the slot is still free. By default the shop's opening hours count as Marcus's standing approval.
-5. It writes the booking to the book, logs it, and completes the Task with `booking_confirmed`.
-6. Dana's agent validates the confirmation, checks it matches the approved offer field for field, logs it, and adds the appointment to Dana's calendar.
+3. Her agent sends a `booking_request` with the `offerId` in the offer's original `contextId`, listing the contract extension, with `returnImmediately: true`. The booking function only accepts an `Approval`.
+4. The barber agent opens an A2A Task. It checks the request is valid, the offer is known in this `contextId`, and it is still Held. By default the shop's opening hours count as Marcus's standing approval.
+5. In one transaction it rechecks the slot is free, writes the booking, marks the offer Booked, logs it, and completes the Task with `booking_confirmed`.
+6. Dana's agent polls `GetTask` until a final state, validates the confirmation, checks it matches the approved offer field for field, logs it, and adds the appointment to Dana's calendar.
 7. Dana sees "Booked."
 
 **Alternate and exception flows**
 
-- **2a.** The offer expired before Dana approved: her agent says so and offers to ask again (back to UC-01).
-- **4a.** The offer is unknown, expired, from another context, or the slot was taken: the Task ends `REJECTED` with `booking_rejected` (`unknown_offer`, `expired`, `slot_taken` or `other`); nothing is written.
-- **4b.** Marcus has switched his shop to manual approval (FR-GATE-05, open Phase 2 decision): the Task waits in input-required state, then completes after Marcus approves, or ends `booking_rejected` after he declines or it times out.
+- **2a.** The local deadline passed before Dana approved: her agent says the offer expired and offers to ask again (back to UC-01).
+- **4a.** The offer is unknown in this context or no longer Held: the Task ends `REJECTED` with `booking_rejected` `unknown_offer` or `expired`; nothing is written.
+- **4b.** Marcus has switched his shop to manual approval (FR-GATE-05): the offer becomes Reserved and the Task stays `WORKING` with the status "Waiting for the shop" (not input-required, which in A2A asks the client for input; see ADR 0012). Marcus is notified. If he approves within the manual approval wait (P-03), the flow continues at step 5. If he declines, the Task ends `booking_rejected` `shop_declined`; if he doesn't answer in time, `shop_timeout`. Either way the offer is Released.
+- **5a.** The recheck finds the slot taken (only possible if the shop's own system booked it outside Hitchpost): `booking_rejected` `slot_taken`; nothing is written.
 - **6a.** The confirmation doesn't match the approved offer: Dana's agent treats it as a failure, logs it and tells Dana to contact the shop.
-- **3a / 6b.** Network failure after sending: Dana's agent retries with the same `offerId`; the barber agent returns the same booking for an already-confirmed offer, not a new one.
+- **6b.** No final state before the booking deadline (P-04): Dana's agent tells her it couldn't confirm the booking and keeps polling in the background; it never shows "Booked" without a `booking_confirmed`.
+- **3a.** Network failure after sending: Dana's agent retries with the same `offerId` and the same `messageId`; the barber agent returns the existing Task in whatever state it is (BR-18), never a second booking.
 
 ```mermaid
 sequenceDiagram
@@ -100,18 +111,26 @@ sequenceDiagram
     participant Gate as Approval gate
     participant BA as Barber agent
     participant Book as Appointment book
+    actor Marcus
 
-    DA-->>Dana: Offer: Thu 17:30, 30.00 USD
+    DA-->>Dana: Offer: Thu 17:30, 30.00 USD, 9 min left
     Dana->>Gate: Approve
     Gate->>Gate: create Approval(offerId, contextId), log
     Gate->>DA: Approval
-    DA->>BA: booking_request(offerId), opens Task
-    BA->>BA: offer exists, unexpired, same context?
+    DA->>BA: booking_request(offerId), returnImmediately
+    BA->>BA: valid, known in context, still Held?
+    BA-->>DA: Task WORKING
     opt shop set to manual approval
-        BA-->>DA: Task input-required
-        Note over BA: waits for Marcus
+        BA->>BA: offer Reserved
+        BA->>Marcus: booking notice
+        Note over BA: Task stays WORKING, "Waiting for the shop"
+        Marcus->>BA: approve or decline (within P-03)
     end
-    BA->>Book: slot still free? write booking
+    loop until final state or P-04
+        DA->>BA: GetTask
+        BA-->>DA: Task state
+    end
+    BA->>Book: recheck slot and write booking, one transaction
     alt all checks pass
         BA-->>DA: Task COMPLETED: booking_confirmed
         DA->>DA: validate, match approved offer, log
@@ -131,32 +150,35 @@ sequenceDiagram
 - **Actors:** Dana, Dana's agent, Marcus's agent.
 - **Preconditions:** Dana has a validated offer (UC-01).
 - **Trigger:** Dana declines, or asks for something different.
-- **Postconditions:** nothing is booked; Dana's agent logs the decline; the barber agent logs the offer as expired and releases the hold at `expiresAt`.
-- **Related:** FR-GATE-01, FR-GATE-03, FR-BOOK-01.
+- **Postconditions:** nothing is booked; both sides log the decline; the hold is released at once (or at `expiresAt` if Dana just ignores the offer).
+- **Related:** FR-GATE-01, FR-GATE-03, FR-BOOK-01; BR-17, BR-19.
 
-The `hitchpost/1` contract has no decline message: an unused offer simply expires. That keeps the contract small; a `decline` kind can be added later if early release of held slots matters to shops.
+Declining sends `offer_declined`, so Marcus's chair is freed immediately instead of sitting blocked for the rest of the offer hold (P-01). Releasing holds early also keeps a person under the open holds cap (P-07) when they ask for alternatives.
 
 **Main flow**
 
 1. Dana declines the offer.
-2. Her agent logs the decline. Nothing is sent.
-3. At `expiresAt` the barber agent releases the hold and logs the offer as expired.
+2. Her agent logs the decline and sends `offer_declined` with the `offerId` in the offer's `contextId`.
+3. The barber agent marks the offer Declined, releases the hold and logs it.
 4. If Dana gave a new preference ("anything later?"), her agent sends a new `availability_request` with the adjusted window (back to UC-01).
 
 **Alternate flows**
 
-- **1a.** Dana ignores the offer: same as declining, without the log entry on her side until expiry.
+- **1a.** Dana ignores the offer: nothing is sent; at `expiresAt` the barber agent marks it Expired and releases the hold.
+- **2a.** `offer_declined` doesn't arrive (network failure): the hold is released at `expiresAt` anyway; nothing depends on the decline message.
 - **4a.** No other slot fits: Dana sees "no slots" and can widen the window.
+- **4b.** Dana already has open holds up to the cap (P-07): the barber agent answers `rejected` until one is declined or expires.
 
 ```mermaid
 flowchart TD
     A[Offer shown] --> B{Dana decides}
-    B -->|Decline| C[Log decline locally]
-    C --> D[Hold released at expiresAt]
-    D --> E{New preference?}
+    B -->|Decline| C[Log decline, send offer_declined]
+    C --> D1[Hold released at once]
+    B -->|Ignore| D2[Hold released at expiresAt]
+    D1 --> E{New preference?}
+    D2 --> E
     E -->|Yes| F[New availability_request, UC-01]
     E -->|No| G[Done, nothing booked]
-    B -->|Ignore| D
     B -->|Approve| I[UC-02]
 ```
 
@@ -166,32 +188,32 @@ flowchart TD
 
 **Phase 2.**
 
-- **Actors:** Dana, Dana's agent, Marcus's agent. Marcus can also cancel from the shop side.
-- **Preconditions:** a confirmed booking exists in both audit logs.
+- **Actors:** Dana, Dana's agent, Marcus's agent. (Marcus cancelling from the shop side is Later; in v1 he contacts Dana outside Hitchpost.)
+- **Preconditions:** a Confirmed booking exists in both audit logs.
 - **Trigger:** Dana cancels or asks to move the booking.
-- **Postconditions:** cancel: slot freed, both logs updated. Reschedule: new slot booked first, then the old one freed.
-- **Related:** FR-BOOK-03, FR-MSG-10, FR-GATE-01, FR-GATE-03.
+- **Postconditions:** cancel: booking Cancelled, slot freed, both logs updated. Reschedule: the new booking is confirmed and the old one cancelled in the same transaction.
+- **Related:** FR-BOOK-03, FR-MSG-10, FR-GATE-01, FR-GATE-03; BR-10, BR-11, BR-19.
 
 **Main flow (cancel)**
 
 1. Dana chooses the booking and cancels. Her agent confirms with her first (cancelling is a commitment change).
-2. Her agent sends `cancel_request` with the `bookingId`, which opens an A2A Task.
-3. The barber agent checks the booking belongs to this customer, frees the slot, logs it and completes the Task with `cancelled`.
+2. Her agent sends `cancel_request` with the `bookingId` in the booking's original `contextId`, which opens an A2A Task. Until agent authentication (Phase 6) that `contextId` is what proves the request comes from the customer who booked, so it is never shown or put in a URL.
+3. The barber agent checks the booking is known in this context and outside the cancellation cutoff (P-10), marks it Cancelled, frees the slot, logs it and completes the Task with `cancelled`.
 4. Dana's agent removes the calendar entry and logs it.
 
 **Main flow (reschedule)**
 
-1. Dana asks to move the booking. Her agent sends `reschedule_request` with the `bookingId` and the new window.
-2. The barber agent answers with an `offer` (as in UC-01).
+1. Dana asks to move the booking. Her agent sends `reschedule_request` with the `bookingId` and the new window, in the booking's `contextId`.
+2. The barber agent answers with an `offer` carrying `replacesBookingId` (as in UC-01).
 3. Dana approves it and the normal UC-02 flow books the new slot.
-4. Once the new booking is confirmed, the barber agent frees the old slot and both sides log it.
+4. In the same transaction that writes the new booking, the barber agent marks the old one Rescheduled and frees its slot; both sides log it.
 
 **Alternate and exception flows**
 
-- **3a.** Cancel refused (for example inside a shop's cancellation cutoff, if the shop sets one): the Task ends `REJECTED` with a reason; nothing changes.
+- **3a.** Cancel refused: the Task ends `REJECTED` with `cancel_rejected`, reason `cutoff` (inside the shop's cutoff) or `unknown_booking` (not known in this context); nothing changes.
 - **Reschedule 2a.** No slot in the new window: `no_availability`; the old booking stays.
-- **Reschedule 3a.** The new offer expires or is declined: the old booking stays.
-- **Later.** Marcus cancels from the shop side and Dana's agent is notified. This needs a business-to-person message the `hitchpost/1` contract doesn't have yet.
+- **Reschedule 3a.** The new offer expires, is declined, or its booking is rejected: the old booking stays (the swap is atomic).
+- **Later.** Marcus cancels from the shop side and Dana's agent is notified. This needs a business-to-person message the `hitchpost/1` contract doesn't have.
 
 ```mermaid
 sequenceDiagram
@@ -204,13 +226,13 @@ sequenceDiagram
     DA-->>Dana: Confirm cancel?
     Dana->>DA: Yes
     DA->>BA: cancel_request(bookingId), opens Task
-    BA->>Book: booking belongs to sender? allowed by policy?
+    BA->>Book: booking known in this context? outside cutoff (P-10)?
     alt allowed
-        Book-->>BA: freed
+        Book-->>BA: booking Cancelled, slot freed
         BA-->>DA: Task COMPLETED: cancelled
         DA-->>Dana: Cancelled
     else not allowed
-        BA-->>DA: Task REJECTED with reason
+        BA-->>DA: Task REJECTED: cancel_rejected(reason)
         DA-->>Dana: Can't cancel, with reason
     end
 ```
@@ -295,8 +317,8 @@ sequenceDiagram
 **Phase 5.**
 
 - **Actors:** Dana and Marcus (each rates the other side), Directory.
-- **Preconditions:** a verified interaction exists in both audit logs (a booking, a decline or a no-show).
-- **Trigger:** the interaction ends (appointment time passes, or the offer is declined).
+- **Preconditions:** a verified interaction exists: both sides logged the offer and a matching decision, and the booking reached Completed or NoShow (BR-14).
+- **Trigger:** the outcome is reported, by the shop marking it on the dashboard or by Dana answering "Did it go as booked?" (E-15).
 - **Postconditions:** the structured metrics update; an optional short review is attached.
 - **Related:** FR-RATE-01 to FR-RATE-03.
 
@@ -355,3 +377,11 @@ sequenceDiagram
 **Alternate flows**
 
 - **3a.** The business appeals: Sam re-reviews; the outcome is recorded too.
+
+## Revision history
+
+| Version | Date       | Change                                                                                                                                                                                                                                                                                   | Author      |
+| ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 0.1     | 2026-11-08 | First draft                                                                                                                                                                                                                                                                              | S. Jannisar |
+| 1.0     | 2026-11-09 | Baselined: renumbered into lifecycle order, formal document control, standards conformance                                                                                                                                                                                               | S. Jannisar |
+| 1.1     | 2026-11-09 | Remediation after independent review: UC-02 Reserved and WORKING with polling, recheck, idempotent retry, clock margin; UC-03 `offer_declined`; UC-04 `cancel_rejected`, `replacesBookingId` atomic swap, context binding, shop-side cancel Later; UC-08 verified interaction definition | S. Jannisar |

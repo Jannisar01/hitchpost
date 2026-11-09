@@ -1,0 +1,235 @@
+# HP-SAD-09 · Data dictionary
+
+| Field       | Value                                                                                                       |
+| ----------- | ----------------------------------------------------------------------------------------------------------- |
+| Document ID | HP-SAD-09                                                                                                   |
+| Version     | 1.1                                                                                                         |
+| Status      | Baselined for Phase 2                                                                                       |
+| Date        | 2026-11-09                                                                                                  |
+| Owner       | Sanaullah Jannisar, product and engineering lead                                                            |
+| Conforms to | ISO/IEC 11179 (metadata registry naming principles), ISO/IEC 25012 (data quality model), ISO 8601, ISO 4217 |
+
+## 1. Purpose and scope
+
+This is the authoritative definition of every data element in Hitchpost: entities from the domain model in [08 Data design](08-data-design.md) and fields of the agent message contract in [13 Interfaces](13-interfaces.md). Where a field is Built, its type and limits here match `packages/core/src/booking.ts` exactly; if the two ever disagree, the code is the defect and this dictionary is the specification.
+
+## 2. Naming conventions
+
+| Rule                                                                               | Example                                      |
+| ---------------------------------------------------------------------------------- | -------------------------------------------- |
+| Fields are `camelCase` on the wire and in TypeScript; `snake_case` in SQL columns  | `durationMinutes` / `duration_minutes`       |
+| Message `kind` values and enumerations are `snake_case` strings                    | `availability_request`, `slot_taken`         |
+| Units go in the name, never implied                                                | `durationMinutes`, `priceCents`, `latencyMs` |
+| Instants end with a verb form or `At`, and are always UTC on the wire              | `start`, `expiresAt`, `decidedAt`            |
+| Identifiers end in `Id` and are opaque strings; nobody parses meaning out of them  | `offerId`, `bookingId`                       |
+| Money is an integer number of minor units plus an ISO 4217 code; never a float     | `priceCents: 3000`, `currency: "USD"`        |
+| Entities are singular nouns (`Booking`); stores and tables are plural (`bookings`) |                                              |
+
+## 3. Shared data types
+
+| Type       | Definition                                                                                                                                                                                                                                                                                         | Enforced by (Built)                      |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `Instant`  | String, strict ISO 8601 `YYYY-MM-DDTHH:mm`, with optional `:ss` and optional 1 to 3 fractional digits, zone `Z` or `±hh:mm`. Hours 00 to 23 (no `24:00` rollover), minutes and seconds 00 to 59, offsets within -14:00 to +14:00, real calendar day. Normalised to UTC `YYYY-MM-DDTHH:mm:ss.sssZ`. | `ISO_INSTANT`, `toInstant`               |
+| `SafeText` | String of 1 to 200 characters, none in Unicode category C (control, format, surrogate, private use, unassigned).                                                                                                                                                                                   | `SAFE_TEXT = /^[^\p{C}]{1,200}$/u`       |
+| `Id`       | `SafeText` used as an opaque identifier. Generated values are UUID v4 (`crypto.randomUUID()`).                                                                                                                                                                                                     | `isSafeText`; generator in `executor.ts` |
+| `Minutes`  | Safe integer, 1 to 1,440 (P-20).                                                                                                                                                                                                                                                                   | `isCount(v, 1, MAX_DURATION_MINUTES)`    |
+| `Cents`    | Safe integer, 0 to 10,000,000 (P-20).                                                                                                                                                                                                                                                              | `isCount(v, 0, MAX_PRICE_CENTS)`         |
+| `Currency` | Three capital letters `/^[A-Z]{3}$/` (ISO 4217 shape; not checked against the code list).                                                                                                                                                                                                          | `parseBarberReply`                       |
+| `IanaZone` | IANA time zone name, for example `America/Chicago`.                                                                                                                                                                                                                                                | Phase 6 (ADR 0018)                       |
+| `Url`      | Absolute `https` URL (plain `http` allowed only for `127.0.0.1` in development).                                                                                                                                                                                                                   | Phase 3                                  |
+
+## 4. Message contract elements
+
+All messages travel as A2A data parts with `mediaType: application/json` and a required `kind`. Unknown fields are dropped on receipt (FR-MSG-03).
+
+### 4.1 `availability_request` (person to business, Built)
+
+| Field      | Type       | Required | Constraints                                             | Example                      |
+| ---------- | ---------- | -------- | ------------------------------------------------------- | ---------------------------- |
+| `kind`     | enum       | Yes      | `"availability_request"`                                | `"availability_request"`     |
+| `service`  | `SafeText` | Yes      | Must name a service the business offers to get an offer | `"haircut"`                  |
+| `earliest` | `Instant`  | Yes      | `earliest < latest`                                     | `"2026-11-12T17:00:00.000Z"` |
+| `latest`   | `Instant`  | Yes      | `latest − earliest ≤ 31 days` (P-06, `MAX_WINDOW_DAYS`) | `"2026-11-12T19:00:00.000Z"` |
+
+### 4.2 `offer` (business to person, Built; `issuedAt`, `expiresAt`, `replacesBookingId` Phase 2)
+
+| Field               | Type       | Required | Constraints                                        | Example                      |
+| ------------------- | ---------- | -------- | -------------------------------------------------- | ---------------------------- |
+| `kind`              | enum       | Yes      | `"offer"`                                          | `"offer"`                    |
+| `offerId`           | `Id`       | Yes      | Unique per issuing business                        | `"3f6c…e21a"`                |
+| `service`           | `SafeText` | Yes      | Must equal the request's `service` (FR-MSG-04)     | `"haircut"`                  |
+| `start`             | `Instant`  | Yes      | Within the request window, inclusive (FR-MSG-04)   | `"2026-11-12T17:30:00.000Z"` |
+| `durationMinutes`   | `Minutes`  | Yes      | 1 to 1,440                                         | `30`                         |
+| `priceCents`        | `Cents`    | Yes      | 0 to 10,000,000                                    | `3000`                       |
+| `currency`          | `Currency` | Yes      | `/^[A-Z]{3}$/`                                     | `"USD"`                      |
+| `issuedAt`          | `Instant`  | Phase 2  | Business clock; authoritative for expiry           | `"2026-11-12T16:40:00.000Z"` |
+| `expiresAt`         | `Instant`  | Phase 2  | `issuedAt` + P-01                                  | `"2026-11-12T16:50:00.000Z"` |
+| `replacesBookingId` | `Id`       | No       | Present only when answering a `reschedule_request` | `"b-7c1d"`                   |
+
+### 4.3 Other Built replies
+
+| Kind              | Field     | Type       | Required | Example                                   |
+| ----------------- | --------- | ---------- | -------- | ----------------------------------------- |
+| `no_availability` | `service` | `SafeText` | Yes      | `"haircut"`                               |
+| `rejected`        | `reason`  | `SafeText` | Yes      | `"expected a valid availability_request"` |
+
+### 4.4 Phase 2 kinds
+
+Every Phase 2 message arrives in the offer's original `contextId`; until agent authentication (Phase 6) the `contextId` is a bearer capability (see [12](12-security-and-privacy.md)). Messages list the contract extension `https://hitchpost.dev/ext/contract/v1` in their `extensions`.
+
+| Kind                 | Field                                                                      | Type          | Required | Constraints                                                                 |
+| -------------------- | -------------------------------------------------------------------------- | ------------- | -------- | --------------------------------------------------------------------------- |
+| `booking_request`    | `offerId`                                                                  | `Id`          | Yes      | Starts a Task; a repeat returns the existing Task (idempotent on `offerId`) |
+| `offer_declined`     | `offerId`                                                                  | `Id`          | Yes      | Releases the hold at once                                                   |
+| `booking_confirmed`  | `bookingId`                                                                | `Id`          | Yes      | Unique per business; data part of the COMPLETED Task                        |
+|                      | `offerId`, `service`, `start`, `durationMinutes`, `priceCents`, `currency` | as in `offer` | Yes      | Must equal the approved offer field for field                               |
+| `booking_rejected`   | `offerId`                                                                  | `Id`          | Yes      | Data part of the REJECTED Task                                              |
+|                      | `reason`                                                                   | enum          | Yes      | `BookingRejectReason` (§6)                                                  |
+| `cancel_request`     | `bookingId`                                                                | `Id`          | Yes      | Starts a Task                                                               |
+| `cancelled`          | `bookingId`                                                                | `Id`          | Yes      | Data part of the COMPLETED Task                                             |
+| `cancel_rejected`    | `bookingId`                                                                | `Id`          | Yes      | Data part of the REJECTED Task                                              |
+|                      | `reason`                                                                   | enum          | Yes      | `CancelRejectReason` (§6)                                                   |
+| `reschedule_request` | `bookingId`                                                                | `Id`          | Yes      | Answered with an `offer` carrying `replacesBookingId`                       |
+|                      | `earliest`, `latest`                                                       | `Instant`     | Yes      | Same rules as `availability_request`                                        |
+
+## 5. Entities
+
+Privacy classes: **Public** (anyone may see), **Personal** (identifies or relates to a person), **Sensitive** (Personal and harmful if leaked, for example contact details). Owner is the system that stores the record.
+
+### 5.1 Business-side entities
+
+| Entity.attribute                   | Type         | Req | Constraints                                                                             | Privacy  | Owner                        | Source          | Status                                                              |
+| ---------------------------------- | ------------ | --- | --------------------------------------------------------------------------------------- | -------- | ---------------------------- | --------------- | ------------------------------------------------------------------- |
+| Service.name                       | `SafeText`   | Y   | Unique within a business                                                                | Public   | Business agent               | Owner setup     | Phase 2 (D-15)                                                      |
+| Service.durationMinutes            | `Minutes`    | Y   |                                                                                         | Public   | Business agent               | Owner setup     | Built                                                               |
+| Service.priceCents                 | `Cents`      | Y   |                                                                                         | Public   | Business agent               | Owner setup     | Built                                                               |
+| Book.currency                      | `Currency`   | Y   | One per business                                                                        | Public   | Business agent               | Owner setup     | Phase 2 (D-15)                                                      |
+| OpeningHours.dayOfWeek             | integer 0–6  | Y   | 0 = Sunday; UTC until Phase 6, then `Business.timeZone`                                 | Public   | Business agent               | Owner setup     | Built (`Book.hours`)                                                |
+| OpeningHours.open / close          | integer 0–24 | Y   | Whole hours, half-open `[open, close)`; `open < close` not yet checked                  | Public   | Business agent               | Owner setup     | Built (range check Phase 2, D-15); minutes of the local day Phase 6 |
+| Booking.start                      | `Instant`    | Y   | On the business's slot grid when created by Hitchpost                                   | Personal | Business agent               | Booking handler | Built (`Booking.start`)                                             |
+| Booking.durationMinutes            | `Minutes`    | Y   | No overlap with any other booking (BR-02)                                               | Personal | Business agent               | Booking handler | Built                                                               |
+| Booking.bookingId                  | `Id`         | Y   | Unique per business                                                                     | Personal | Business agent               | Booking handler | Phase 2                                                             |
+| Booking.offerId                    | `Id`         | Y   | Unique: one booking per offer                                                           | Personal | Business agent               | Booking handler | Phase 2                                                             |
+| Booking.status                     | enum         | Y   | `BookingStatus` (§6)                                                                    | Personal | Business agent               | Booking handler | Phase 2                                                             |
+| Booking.customerRef                | `Id`         | Y   | Pseudonymous reference to the personal agent's context; deleted with the booking (P-12) | Personal | Business agent               | Booking handler | Phase 2                                                             |
+| Offer.offerId                      | `Id`         | Y   | Primary key                                                                             | Personal | Business agent               | Offer store     | Phase 2                                                             |
+| Offer.contextId                    | `Id`         | Y   | A2A context the offer was issued in                                                     | Personal | Business agent               | Offer store     | Phase 2                                                             |
+| Offer.(service … currency)         | as §4.2      | Y   |                                                                                         | Personal | Business agent               | Offer store     | Phase 2                                                             |
+| Offer.issuedAt                     | `Instant`    | Y   | Business clock, authoritative for expiry                                                | Personal | Business agent               | Offer store     | Phase 2                                                             |
+| Offer.expiresAt                    | `Instant`    | Y   | `issuedAt` + P-01; extended to P-02 while Reserved                                      | Personal | Business agent               | Offer store     | Phase 2                                                             |
+| Offer.state                        | enum         | Y   | `OfferState` (§6)                                                                       | Personal | Business agent               | Offer store     | Phase 2                                                             |
+| Offer.taskId                       | `Id`         | N   | Set by the first `booking_request`; unique (idempotency)                                | Personal | Business agent               | Booking handler | Phase 2                                                             |
+| Offer.replacesBookingId            | `Id`         | N   | Set when the offer answers a `reschedule_request`                                       | Personal | Business agent               | Offer store     | Phase 2                                                             |
+| Booking.replacesBookingId          | `Id`         | N   | Booking this one replaced; old one cancelled in the same transaction                    | Personal | Business agent               | Booking handler | Phase 2                                                             |
+| Business.timeZone                  | `IanaZone`   | Y   |                                                                                         | Public   | Directory and business agent | Owner setup     | Phase 6 (ADR 0018)                                                  |
+| Business.approvalMode              | enum         | Y   | `standing` (default) or `manual` (FR-GATE-05)                                           | Public   | Business agent               | Owner setup     | Phase 2                                                             |
+| Business.cancellationCutoffMinutes | integer ≥ 0  | N   | Absent means no cutoff (P-10)                                                           | Public   | Business agent               | Owner setup     | Phase 2                                                             |
+
+### 5.2 Person-side entities
+
+| Entity.attribute   | Type       | Req | Constraints                                                                                   | Privacy   | Owner          | Source            | Status  |
+| ------------------ | ---------- | --- | --------------------------------------------------------------------------------------------- | --------- | -------------- | ----------------- | ------- |
+| Approval.offerId   | `Id`       | Y   | Exactly one offer                                                                             | Personal  | Personal agent | Approval gate     | Phase 2 |
+| Approval.contextId | `Id`       | Y   | Must match the offer's context                                                                | Personal  | Personal agent | Approval gate     | Phase 2 |
+| Approval.decidedAt | `Instant`  | Y   | Before the local deadline (P-09); personal clock only, never compared with the business clock | Personal  | Personal agent | Approval gate     | Phase 2 |
+| Approval.decision  | enum       | Y   | `approved` or `declined`                                                                      | Personal  | Personal agent | Approval gate     | Phase 2 |
+| Person.id          | `Id`       | Y   |                                                                                               | Personal  | App            | Sign-up           | Phase 4 |
+| Person.displayName | `SafeText` | Y   |                                                                                               | Personal  | App            | Sign-up           | Phase 4 |
+| Person.email       | string     | Y   | RFC 5322 address, verified                                                                    | Sensitive | App            | Sign-up           | Phase 4 |
+| Person.timeZone    | `IanaZone` | Y   | Times shown to the person use it                                                              | Personal  | App            | Device or setting | Phase 4 |
+| Contact.personId   | `Id`       | Y   |                                                                                               | Personal  | App            | Add contact       | Phase 4 |
+| Contact.listingId  | `Id`       | N   | Absent for an agent added by URL                                                              | Personal  | App            | Add contact       | Phase 4 |
+| Contact.cardUrl    | `Url`      | Y   |                                                                                               | Personal  | App            | Add contact       | Phase 4 |
+| Contact.nickname   | `SafeText` | N   |                                                                                               | Personal  | App            | Person            | Phase 4 |
+| Contact.blocked    | boolean    | Y   | Default false (FR-APP-05)                                                                     | Personal  | App            | Person            | Phase 4 |
+
+### 5.3 Shared and platform entities
+
+| Entity.attribute                                                | Type         | Req | Constraints                                                         | Privacy                      | Owner      | Status                 |
+| --------------------------------------------------------------- | ------------ | --- | ------------------------------------------------------------------- | ---------------------------- | ---------- | ---------------------- |
+| AuditEvent.seq                                                  | integer      | Y   | Strictly increasing per log                                         | Personal                     | Each agent | Phase 2                |
+| AuditEvent.at                                                   | `Instant`    | Y   |                                                                     | Personal                     | Each agent | Phase 2                |
+| AuditEvent.kind                                                 | enum         | Y   | `AuditEventKind` (§6)                                               | Personal                     | Each agent | Phase 2                |
+| AuditEvent.contextId / taskId / offerId / messageId / bookingId | `Id`         | N   | As applicable; all logged from Phase 2 for correlation              | Personal                     | Each agent | Phase 2                |
+| AuditEvent.payloadHash                                          | string       | Y   | SHA-256 hex over the JCS (RFC 8785) canonical JSON of the data part | Personal                     | Each agent | Phase 2                |
+| AuditEvent.prevHash                                             | string       | Y   | SHA-256 of the previous event (hash chain)                          | Personal                     | Each agent | Phase 6                |
+| DirectoryListing.id                                             | `Id`         | Y   |                                                                     | Public                       | Directory  | Phase 3                |
+| DirectoryListing.businessName                                   | `SafeText`   | Y   |                                                                     | Public                       | Directory  | Phase 3                |
+| DirectoryListing.address                                        | string       | Y   | Postal address, geocoded to lat/lng                                 | Public                       | Directory  | Phase 3                |
+| DirectoryListing.cardUrl                                        | `Url`        | Y   | Origin must equal `verifiedOrigin` (BR-12)                          | Public                       | Directory  | Phase 3                |
+| DirectoryListing.verifiedOrigin                                 | `Url` origin | N   | Set when proof passes                                               | Public                       | Directory  | Phase 3                |
+| DirectoryListing.status                                         | enum         | Y   | `ListingStatus` (§6)                                                | Public                       | Directory  | Phase 3                |
+| AgentCard.(name, supportedInterfaces, skills, signatures)       | per A2A v1.0 | Y   | Card at `/.well-known/agent-card.json`                              | Public                       | Each agent | Built (`barberCard()`) |
+| InteractionRecord.contextId                                     | `Id`         | Y   |                                                                     | Personal (pseudonymous)      | Ratings    | Phase 5                |
+| InteractionRecord.outcome                                       | enum         | Y   | `InteractionOutcome` (§6)                                           | Personal (pseudonymous)      | Ratings    | Phase 5                |
+| InteractionRecord.latencyMs                                     | integer ≥ 0  | Y   | Request to reply                                                    | Personal (pseudonymous)      | Ratings    | Phase 5                |
+| InteractionRecord.signedBy                                      | list of `Id` | Y   | Both parties                                                        | Personal (pseudonymous)      | Ratings    | Phase 5                |
+| Review.interactionId                                            | `Id`         | Y   | Needs a two-sided record (BR-14)                                    | Personal                     | Ratings    | Phase 5                |
+| Review.stars                                                    | integer 1–5  | Y   |                                                                     | Public                       | Ratings    | Phase 5                |
+| Review.text                                                     | string       | N   | 0 to 1,000 characters, no control characters                        | Public text, personal author | Ratings    | Phase 5                |
+| Report.listingId                                                | `Id`         | Y   |                                                                     | Public                       | Directory  | Phase 5                |
+| Report.reason                                                   | enum         | Y   | `ReportReason` (§6)                                                 | Personal                     | Directory  | Phase 5                |
+| Report.details                                                  | string       | N   | 0 to 1,000 characters                                               | Personal                     | Directory  | Phase 5                |
+| Report.status                                                   | enum         | Y   | `ReportStatus` (§6)                                                 | Personal                     | Directory  | Phase 5                |
+
+## 6. Enumerations
+
+| Enumeration           | Values                                                                                                                                                                                                                                 | Status                                                                                 |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `MessageKind`         | `availability_request`, `offer`, `no_availability`, `rejected` (Built); `booking_request`, `offer_declined`, `booking_confirmed`, `booking_rejected`, `cancel_request`, `cancelled`, `cancel_rejected`, `reschedule_request` (Phase 2) | Built / Phase 2                                                                        |
+| `BookingRejectReason` | `expired`, `unknown_offer`, `slot_taken`, `shop_declined`, `shop_timeout`, `other`                                                                                                                                                     | Phase 2                                                                                |
+| `CancelRejectReason`  | `cutoff`, `unknown_booking`, `other`                                                                                                                                                                                                   | Phase 2                                                                                |
+| `OfferState`          | `held`, `reserved`, `booked`, `declined`, `expired`, `released`, `purged` (states `Held` to `Purged` in 07 §8.1)                                                                                                                       | Phase 2                                                                                |
+| `BookingStatus`       | `confirmed`, `cancelled`, `rescheduled`, `completed`, `no_show`, `deleted` (states in 07 §8.2; a pending shop decision is the Offer state `reserved`, not a Booking)                                                                   | Phase 2 (`completed`, `no_show` recorded from Phase 4; `deleted` by the retention job) |
+| `ApprovalMode`        | `standing`, `manual`                                                                                                                                                                                                                   | Phase 2                                                                                |
+| `AuditEventKind`      | `offer_received`, `offer_issued`, `decision_approved`, `decision_declined`, `booking_requested`, `booking_confirmed`, `booking_rejected`, `offer_expired`, `cancel_requested`, `cancelled`, `cancel_rejected`, `outcome_recorded`      | Phase 2                                                                                |
+| `InteractionOutcome`  | `completed`, `no_show`, `cancelled`, `rejected`                                                                                                                                                                                        | Phase 5                                                                                |
+| `ListingStatus`       | `pending`, `verified`, `paused`, `suspended`, `closed`                                                                                                                                                                                 | Phase 3                                                                                |
+| `ReportReason`        | `impersonation`, `spam`, `misleading_offer`, `abusive`, `other`                                                                                                                                                                        | Phase 5                                                                                |
+| `ReportStatus`        | `open`, `under_review`, `actioned`, `dismissed`, `appealed`, `reversed`                                                                                                                                                                | Phase 5                                                                                |
+
+State transitions for `OfferState`, `BookingStatus`, `ListingStatus` and `ReportStatus` are defined in [07 §8](07-process-and-behaviour-models.md#8-state-machines).
+
+## 7. CRUD matrix
+
+C = create, R = read, U = update, D = delete. Use cases from [06](06-use-cases.md); the last three rows are operator and system processes.
+
+| Process                                         | Business / Service / Hours | Offer | Approval | Booking | AuditEvent | Listing | Person | Contact | InteractionRecord | Review | Report |
+| ----------------------------------------------- | -------------------------- | ----- | -------- | ------- | ---------- | ------- | ------ | ------- | ----------------- | ------ | ------ |
+| UC-01 Ask for availability                      | R                          | C     |          | R       | C          | R       |        | R       |                   |        |        |
+| UC-02 Approve and book                          | R                          | R U   | C        | C R     | C          |         |        |         |                   |        |        |
+| UC-03 Decline or ask for another                | R                          | C U   | C        | R       | C          |         |        |         |                   |        |        |
+| UC-04 Reschedule or cancel                      | R                          | C U   | C        | R U     | C          |         |        |         |                   |        |        |
+| UC-05 Register a business agent                 | C U                        |       |          |         |            | C U     |        |         |                   |        |        |
+| UC-06 Find a business agent                     |                            |       |          |         |            | R       |        |         |                   | R      |        |
+| UC-07 Add contact and chat                      |                            |       |          |         |            | R       | R      | C U D   |                   |        |        |
+| UC-08 Rate an interaction                       |                            |       |          | R U     | R          |         |        |         | C R               | C U D  |        |
+| UC-09 Report an agent                           |                            |       |          |         |            | R       |        |         |                   |        | C      |
+| UC-10 Moderate                                  |                            |       |          |         | C          | U D     |        |         |                   | U D    | R U    |
+| Account sign-up, edit and deletion (Phase 4)    |                            |       |          |         | C          |         | C U D  | D       |                   | D      |        |
+| Business owner setup and closing (Phase 2 to 3) | C U D                      |       |          |         | C          | U D     |        |         |                   |        |        |
+| Retention job (E-14)                            |                            | D     | D        | D       | D          |         |        |         | D                 |        | D      |
+
+Every entity has a creating process and a deleting process, so nothing is collected without a path to removal (NFR-PRIV-02). `AgentCard` is served, not stored, so it has no row.
+
+## 8. Data quality rules
+
+Dimensions from ISO/IEC 25012.
+
+| ID    | Dimension    | Rule                                                                                                        | Check                                                 | Status                          |
+| ----- | ------------ | ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ------------------------------- |
+| DQ-01 | Accuracy     | Every instant is stored as canonical UTC with an explicit zone on input                                     | `toInstant`; unit tests                               | Built                           |
+| DQ-02 | Consistency  | No two bookings in one business overlap                                                                     | `findFreeSlot`; Phase 6 database exclusion constraint | Built (search)                  |
+| DQ-03 | Consistency  | `booking_confirmed` equals the approved offer field for field                                               | Personal agent check before calendar write            | Phase 2                         |
+| DQ-04 | Completeness | Every booking has an offer, an approval and audit events on both sides, joined on `contextId` and `offerId` | Audit reconciliation job                              | Phase 2                         |
+| DQ-05 | Validity     | Every inbound field passes its §3 type rule                                                                 | Parsers in `booking.ts`                               | Built                           |
+| DQ-06 | Currentness  | Expired, declined and released offers never block slots; open holds capped (P-07)                           | Slot search ignores them; offer store counts holds    | Phase 2                         |
+| DQ-07 | Credibility  | Only verified listings are searchable; only two-sided interactions are rated                                | Directory and rating ingest                           | Phase 3, 5                      |
+| DQ-08 | Traceability | Each booking can be followed end to end by `contextId`, `taskId`, `offerId` and `messageId`                 | Audit reconciliation; trace ids added in Phase 6      | Phase 2 (ids), Phase 6 (traces) |
+
+## Revision history
+
+| Version | Date       | Change                                                                                                                                                                                         | Author      |
+| ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 1.0     | 2026-11-09 | First baseline                                                                                                                                                                                 | S. Jannisar |
+| 1.1     | 2026-11-09 | Remediation after independent review: new kinds and fields, enums aligned to state machines, complete CRUD matrix, Book config constraints marked D-15, `toInstant` limits, time zones Phase 6 | S. Jannisar |

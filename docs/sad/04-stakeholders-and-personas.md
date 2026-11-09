@@ -1,14 +1,19 @@
-# 03. Stakeholders and personas
+# HP-SAD-04 · Stakeholders and personas
 
-- **Status:** Draft, 2026-11-08
-- **Owner:** Sanaullah Jannisar
-- **Stage:** Analysis
+| Field       | Value                                                                                                                                              |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Document ID | HP-SAD-04                                                                                                                                          |
+| Version     | 1.1                                                                                                                                                |
+| Status      | Baselined for Phase 2                                                                                                                              |
+| Date        | 2026-11-09                                                                                                                                         |
+| Owner       | Sanaullah Jannisar, product and engineering lead                                                                                                   |
+| Conforms to | ISO/IEC/IEEE 29148:2018 (stakeholder requirements: stakeholders, user profiles, operational concept); ISO/IEC/IEEE 42010 stakeholders and concerns |
 
-## Stakeholder map
+## 1. Stakeholder map
 
 | Stakeholder                                           | Interest                                                         | Influence                          | How I engage                                                      |
 | ----------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------------- |
-| Customers (Dana)                                      | Book fast, no surprises, privacy                                 | High: adoption decides everything  | Wizard-of-Oz test (A-01), app feedback, ratings                   |
+| Customers (Dana)                                      | Book fast, no surprises, privacy                                 | High: adoption decides everything  | 8-week Wizard-of-Oz test (A-01), app feedback, ratings            |
 | Barbers and shop owners (Marcus)                      | More bookings, fewer missed calls, no double-booking, low effort | High: supply side                  | Interviews (A-02), in-person setup, weekly check-ins              |
 | Agent developers (Priya)                              | Get their agent listed, trusted and used                         | Medium: interop and growth         | Open docs, open source, Agent Card spec, contract tests           |
 | Directory operator and moderator (Sam)                | Keep listings real and abuse low                                 | Medium                             | Admin tools (Phase 6), runbooks                                   |
@@ -37,7 +42,7 @@ quadrantChart
     Contributors: [0.6, 0.25]
 ```
 
-## Responsibilities (RACI-lite)
+## 2. Responsibilities (RACI-lite)
 
 R = does the work, A = owns the decision, C = consulted, I = informed. "Me" is the maintainer, who is also Sam until there's a separate operator.
 
@@ -54,11 +59,11 @@ R = does the work, A = owns the decision, C = consulted, I = informed. "Me" is t
 
 One open decision for Phase 2: does Marcus approve each booking, or do opening hours count as his standing approval? My working answer is standing approval by default, with a per-shop switch for manual approval. It gets confirmed in the A-02 interviews.
 
-## Personas
+## 3. Personas
 
 ### Dana, customer
 
-- **Context:** 34, works hybrid, books a haircut every 3 to 4 weeks, usually remembers late. Has an assistant app on her phone.
+- **Context:** 34, works hybrid, books a haircut every 3 to 4 weeks, usually remembers late. Has an assistant app on her phone. Because she books only every 3 to 4 weeks, the A-01 test in [03](03-business-case.md) runs 8 weeks: long enough to see two of her bookings.
 - **Goals:** get a slot that fits after work without calling; know it's really booked.
 - **Pains:** phone calls during work hours; every shop uses a different app; booking forms on a phone; finding out the slot was gone.
 - **What she needs from Hitchpost:** one message, one clear offer, one tap to approve, confirmation she can trust.
@@ -86,7 +91,7 @@ One open decision for Phase 2: does Marcus approve each booking, or do opening h
 - **Pains:** fake listings, spam agents, unclear evidence when handling disputes.
 - **What Sam needs:** an admin view of listings and reports, audit logs from both sides of a dispute, rate-limit and block controls.
 
-## Journeys
+## 4. Journeys
 
 ### Dana: today
 
@@ -143,10 +148,10 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    P1[Reads the message contract in 09 interfaces] --> P2[Runs the conformance tests locally]
+    P1[Reads the message contract in 13 interfaces] --> P2[Runs the conformance tests locally]
     P2 --> P3[Publishes the Agent Card at the well-known URL]
     P3 --> P4[Registers the listing in the directory]
-    P4 --> P5[Verification: domain or phone check for the business]
+    P4 --> P5[Verification: well-known token or DNS TXT record on the business domain]
     P5 --> P6{Verified?}
     P6 -- no --> P7[Fixes and retries]
     P7 --> P5
@@ -154,6 +159,14 @@ flowchart TD
     P8 --> P9[Reputation builds from verified interactions]
 ```
 
-## Supersedes and related
+## 5. Supersedes and related
 
-Supersedes "Who it is for" in [concept.md](../concept.md). Related: [01 vision and scope](01-vision-and-scope.md), [02 business case](02-business-case.md), [05 use cases](05-use-cases.md).
+Supersedes "Who it is for" in [concept.md](../concept.md). Related: [01 vision and scope](01-vision-and-scope.md), [03 business case](03-business-case.md), [06 use cases](06-use-cases.md).
+
+## Revision history
+
+| Version | Date       | Change                                                                                                                                         | Author      |
+| ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 0.1     | 2026-11-08 | First draft                                                                                                                                    | S. Jannisar |
+| 1.0     | 2026-11-09 | Baselined: renumbered into lifecycle order, formal document control, standards conformance                                                     | S. Jannisar |
+| 1.1     | 2026-11-09 | Remediation after independent review: A-01 test length (8 weeks) tied to Dana's booking frequency; Priya's verification step matches FR-DIR-01 | S. Jannisar |
