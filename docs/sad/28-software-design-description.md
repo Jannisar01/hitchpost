@@ -3,8 +3,8 @@
 | Field       | Value                                                                      |
 | ----------- | -------------------------------------------------------------------------- |
 | Document ID | HP-SAD-28                                                                  |
-| Version     | 1.0                                                                        |
-| Status      | Baselined for Phase 2                                                      |
+| Version     | 1.1                                                                        |
+| Status      | Frozen for Phase 2 spike                                                   |
 | Date        | 2026-11-09                                                                 |
 | Owner       | Sanaullah Jannisar, product and engineering lead                           |
 | Conforms to | IEEE 1016-2009 (software design descriptions: viewpoints and design views) |
@@ -78,11 +78,25 @@ The frontend has its own specification in [27](27-frontend-technical-specificati
 | JSONL audit log        | Append-only log of offers, decisions and results with correlation ids                                                                                                          | Phase 2 |
 | Install key            | Random 128-bit key per install, sent in a request header so caps work behind shared IPs                                                                                        | Phase 2 |
 
-### 4.4 Dependencies
+### 4.4 Minimal MCP gateway (`packages/mcp-gateway`, Phase 3, v1 Must, UC-12)
+
+The tool contract is in [13](13-interfaces.md) section 6; this is the module design.
+
+| Module                                     | Responsibility                                                                                                                                                                                                                                                  | Status  |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| Tools `find_agent_line`, `read_agent_line` | Search the directory API for agent lines by service, area and name; fetch a line's card, profile and services with the same origin pinning and no-redirect fetch as `ask.ts`                                                                                    | Phase 3 |
+| Tool `request_availability`                | Send a validated `availability_request` through the personal agent library (`askForSlot`) and return the validated offer                                                                                                                                        | Phase 3 |
+| Tools `approve_offer`, `confirm_booking`   | `approve_offer` returns a confirmation step (deep link or the assistant's own confirmation UI); `confirm_booking` sends the booking only with the one-time confirmation the human produced there. No tool approves on its own, whatever the model's prompt says | Phase 3 |
+| Tool `decline_offer`                       | Sends `offer_declined` so the hold is released at once                                                                                                                                                                                                          | Phase 3 |
+| Session and tokens                         | Per-assistant MCP session; gateway credentials and any `bookingToken` stay server-side and are never returned in a tool result                                                                                                                                  | Phase 3 |
+
+The gateway holds no booking state of its own: it is a thin adapter over the personal agent library and the directory API. Relationships, consultation and the rest of the full gateway are stage L3.
+
+### 4.5 Dependencies
 
 `core` depends only on the A2A SDK's types. Both agents depend on `core` and the SDK. Nothing depends on an agent package except tests; end-to-end tests move to their own package in Phase 2 so the agents don't depend on each other.
 
-**Identity dependency (round 4).** Relationship tiers (owner, friend, subscriber, follower, public) need to know who is calling. Agent authentication and card signing are planned for Phase 6 (ADR 0017, proposed); they must move to the phase that introduces relationships. Until then, every caller is anonymous, and only server-minted capabilities (`offerId`, `bookingToken`) carry authority. No module may branch on a caller's claimed identity before ADR 0017 is accepted and built.
+**Identity dependency (network stages L1 to L3).** Relationship tiers (`RelationshipTier`: owner (the owner's own agent family), friend (mutual), subscriber (Later, unpriced), follower (one-way), public; `blocked` is an edge state, not a tier) need to know who is calling. Agent authentication and card signing are planned for Phase 6 (ADR 0017, proposed); they must move to the phase that introduces relationships. Until then, every caller is anonymous, and only server-minted capabilities (`offerId`, `bookingToken`) carry authority. No module may branch on a caller's claimed identity before ADR 0017 is accepted and built.
 
 ## 5. Technical design of the Phase 2 mechanisms
 
@@ -124,7 +138,7 @@ One table, `scheduled_jobs(id, kind, ref, due_at, lease_until, attempts)`, holds
 
 ### 5.5 Caps
 
-Open holds per sender are capped (P-07) and requests are rate limited (P-08). The sender is the install key from the request header, falling back to IP when there is none, and the agent identity once agent authentication exists (Phase 6, earlier with relationships). Counting uses the offer store for holds and a sliding one-minute window in memory for the rate limit.
+Open holds per sender are capped (P-07), open holds per business are capped independently of the sender (P-31, because install keys are client-chosen and can be rotated), and requests are rate limited (P-08). The sender is the install key from the request header, falling back to IP when there is none, and the agent identity once agent authentication exists (Phase 6, earlier with relationships). Counting uses the offer store for holds and a sliding one-minute window in memory for the rate limit.
 
 ### 5.6 Unknown kinds
 
@@ -158,9 +172,10 @@ Cost is bounded by the validated window: at most 1,488 slot checks, each against
 ### 6.2 Hold cap check (Phase 2)
 
 ```text
-canHold(sender):
-  open = count offers where sender = sender and state = Held and expiresAt > now
-  return open < 3                          # P-07
+canHold(sender, business):
+  bySender   = count offers where sender = sender and state = Held and expiresAt > now
+  byBusiness = count offers where business = business and state = Held and expiresAt > now
+  return bySender < 3 and byBusiness < business.holdCap   # P-07; P-31 (default 10)
 ```
 
 ### 6.3 Offer acceptance (Phase 2, standing approval)
@@ -259,6 +274,7 @@ Configuration comes from environment variables, validated at start: port, data d
 
 ## Revision history
 
-| Version | Date       | Change                                                    | Author      |
-| ------- | ---------- | --------------------------------------------------------- | ----------- |
-| 1.0     | 2026-11-09 | First baseline, including the round 4 identity dependency | S. Jannisar |
+| Version | Date       | Change                                                                                                        | Author      |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------- | ----------- |
+| 1.0     | 2026-11-09 | First baseline, including the round 4 identity dependency                                                     | S. Jannisar |
+| 1.1     | 2026-11-09 | Round 5: protocol first (no pricing), minimal MCP gateway in v1, final QA fixes, frozen for the Phase 2 spike | S. Jannisar |

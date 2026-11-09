@@ -3,8 +3,8 @@
 | Field       | Value                                                                                                                                                                                       |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-34                                                                                                                                                                                   |
-| Version     | 1.0                                                                                                                                                                                         |
-| Status      | Baselined for Phase 2                                                                                                                                                                       |
+| Version     | 1.1                                                                                                                                                                                         |
+| Status      | Frozen for Phase 2 spike                                                                                                                                                                    |
 | Date        | 2026-11-09                                                                                                                                                                                  |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                                                                                                            |
 | Conforms to | ISO/IEC/IEEE 29119-3:2021 (test design, test case and test procedure specifications); ISO/IEC/IEEE 29119-4:2021 (equivalence partitioning, boundary value analysis, decision table testing) |
@@ -100,6 +100,18 @@ Planned unless marked. Each case lists its preconditions, steps and expected res
 - Preconditions: SB with enough free slots; install keys K1 and K2 from the same IP.
 - Steps: 1. K1 sends three different requests: three offers. 2. K1 sends a fourth: `rejected` with reason `hold_cap`. 3. K2 sends one from the same IP: an offer (carrier NAT must not lock out K2). 4. A request with no install key falls back to the IP cap.
 - Expected: caps follow the install key, not the shared IP.
+
+#### TC-126 Per-business hold cap, whoever the senders are
+
+(FR-BOOK-18, BR-27, P-31; P1; Planned)
+
+- Preconditions: SB with P-31 = 10 and more than 10 free slots.
+- Steps and expected results:
+  1. Ten different install keys each send one `availability_request`. Expect ten offers and ten open holds.
+  2. An eleventh install key sends one. Expect `rejected` reason `hold_cap` and no new hold.
+  3. One of the ten offers expires or is declined. A new install key asks. Expect an offer.
+  4. Rotate one key many times from one client. Expect the business total never to exceed P-31.
+- Postcondition: open holds for the business never exceed P-31.
 
 #### TC-55 Unknown kind is answered, not crashed
 
@@ -209,6 +221,31 @@ Planned unless marked. Each case lists its preconditions, steps and expected res
 
 (NFR-PRIV-01; P1; Planned) Steps: inspect every message in TC-78. Expected: no event titles, attendees or other calendar data cross the line, only proposed times and the people's chosen display names.
 
+### 4.7 UC-12 Use your own assistant through the minimal MCP gateway (Phase 3)
+
+Test double: an MCP client harness that calls the gateway's tools directly (no language model needed), against SB and a directory with one verified listing.
+
+#### TC-127 Find and read an agent line
+
+(FR-DIR-07; P1; Planned)
+
+- Steps: 1. `find_agent_line` with service "haircut" and the test area: the verified listing is returned with its profile and card URL; an unverified listing is not. 2. `read_agent_line`: the card and services with `serviceId` come back.
+- Expected: no tool call sends anything to a business agent.
+
+#### TC-128 Availability through the gateway is validated like the reference agent
+
+(FR-MSG-19, FR-MSG-03, FR-MSG-04, FR-MSG-16; P1; Planned)
+
+- Steps: 1. `request_availability` for a free window: the validated offer fields come back. 2. Point the listing at a hostile test agent that returns an offer for another service: the tool returns an error, no offer. 3. Serve a card whose interface is on another origin: refused.
+- Expected: the gateway's validation matches the reference personal agent (TC-17 to TC-23).
+
+#### TC-129 The gateway never books without the person's confirmation
+
+(FR-GATE-06, FR-GATE-01; P1; Planned)
+
+- Steps: 1. `approve_offer`: a confirmation step comes back and no `booking_request` reaches SB. 2. `confirm_booking` with a wrong or reused confirmation: refused, nothing sent. 3. `confirm_booking` after the hold ends (P-01, P-09): refused, offer expired. 4. `confirm_booking` with the valid one-time confirmation: `booking_confirmed`, checked against the offer.
+- Expected: exactly one booking, and only after step 4.
+
 ## 5. Equivalence classes and boundaries
 
 ### 5.1 Instants (`toInstant`, FR-MSG-06)
@@ -291,27 +328,29 @@ Each rule of a decision table in [07 §7](07-process-and-behaviour-models.md#7-d
 
 Plain language, run by the person themselves with me observing. Tick one box per step. A step fails if the person hesitates for more than a minute or says they aren't sure what happened.
 
+Requests use structured pickers (service, day, time window) in every phase before the language-model stage; nobody types free text for the agent to interpret.
+
 ### 7.1 Dana (person booking a haircut), Phase 4 app
 
 | #   | Do this                                                                          | You should see                                                         | Pass | Fail |
 | --- | -------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---- | ---- |
-| 1   | Open the app and find Main Street Barbers. Add them as a contact.                | The shop in your chats, marked verified                                | []   | []   |
-| 2   | Type: "Haircut Thursday after 5".                                                | One offer with the time in the shop's time, the price and "held until" | []   | []   |
+| 1   | Open the app and find Main Street Barbers. Add them as a contact.                | The shop in your chats                                                 | []   | []   |
+| 2   | Pick "Haircut", Thursday, and "5 pm to 7 pm", then send.                         | One offer with the time in the shop's time, the price and "held until" | []   | []   |
 | 3   | Open the offer and read it. Say out loud what you'd pay and when you can cancel. | Total price, cancellation terms, the shop's phone number               | []   | []   |
 | 4   | Tap Approve.                                                                     | "Booked" within a few seconds, with the time and the shop's address    | []   | []   |
-| 5   | Open your calendar.                                                              | The haircut at the right local time                                    | []   | []   |
+| 5   | Open your calendar.                                                              | The haircut at the right time                                          | []   | []   |
 | 6   | Go to Bookings and cancel it.                                                    | "Cancelled" and the slot no longer in your calendar                    | []   | []   |
 | 7   | Ask for another time, then decline the offer.                                    | "No problem, nothing was booked"                                       | []   | []   |
 
 ### 7.2 Marcus (barber), Phase 2 business agent and Phase 4 dashboard
 
-| #   | Do this                                                    | You should see                                                                | Pass | Fail |
-| --- | ---------------------------------------------------------- | ----------------------------------------------------------------------------- | ---- | ---- |
-| 1   | Check your opening hours and services on the setup screen. | Exactly what your shop offers; wrong hours are refused with a reason          | []   | []   |
-| 2   | Wait for the test booking I send.                          | The booking in your existing booking tool, with the customer's name and phone | []   | []   |
-| 3   | After the appointment time, mark it Completed.             | Marked, with no bill attached to the mark                                     | []   | []   |
-| 4   | Pretend you're sick: call me (Sam) to cancel a booking.    | I confirm the customer was told, and the slot reopens                         | []   | []   |
-| 5   | Pause your listing.                                        | New offers stop; existing bookings stay                                       | []   | []   |
+| #   | Do this                                                    | You should see                                                                                              | Pass | Fail |
+| --- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ---- | ---- |
+| 1   | Check your opening hours and services on the setup screen. | Exactly what your shop offers; wrong hours are refused with a reason                                        | []   | []   |
+| 2   | Wait for the test booking I send.                          | The booking in the agent's log (Phase 2) or on your dashboard (Phase 4), with the customer's name and phone | []   | []   |
+| 3   | After the appointment time, mark it Completed.             | Marked; it settles when the customer answers or after P-25                                                  | []   | []   |
+| 4   | Pretend you're sick: call me (Sam) to cancel a booking.    | I confirm the customer was told, and the slot reopens                                                       | []   | []   |
+| 5   | Pause your listing.                                        | New offers stop; existing bookings stay                                                                     | []   | []   |
 
 ### 7.3 Priya (agent developer), Phase 2 conformance kit
 
@@ -321,6 +360,24 @@ Plain language, run by the person themselves with me observing. Tick one box per
 | 2   | Point the conformance runner at your agent's URL.     | A pass or fail per check, with the failing message shown               | []   | []   |
 | 3   | Leave out the `A2A-Extensions` header on purpose.     | A clear "extension required" failure                                   | []   | []   |
 | 4   | Book against the test business agent from your agent. | `booking_confirmed` with a `bookingToken`; cancel works with it        | []   | []   |
+
+### 7.4 Jordan (his own assistant), Phase 3 minimal MCP gateway
+
+| #   | Do this                                                              | You should see                                                      | Pass | Fail |
+| --- | -------------------------------------------------------------------- | ------------------------------------------------------------------- | ---- | ---- |
+| 1   | Connect the Hitchpost MCP server to your assistant and sign in once. | The gateway's tools listed in your assistant                        | []   | []   |
+| 2   | Ask your assistant to find a barber in the test area.                | Listings with their profiles                                        | []   | []   |
+| 3   | Ask it for a haircut slot on a day and window you choose.            | One offer with the time, price and "held until"; nothing booked yet | []   | []   |
+| 4   | Tell your assistant to book it, but don't confirm.                   | A link or confirmation to approve; still nothing booked             | []   | []   |
+| 5   | Confirm through the link.                                            | "Booked" with the details matching the offer                        | []   | []   |
+
+### 7.5 Phase 5 and Phase 6 additions
+
+| #   | Who    | Do this                                               | You should see                                                   | Pass | Fail |
+| --- | ------ | ----------------------------------------------------- | ---------------------------------------------------------------- | ---- | ---- |
+| 1   | Dana   | Open Main Street Barbers' listing (Phase 5).          | Marked verified, with its rating from verified interactions      | []   | []   |
+| 2   | Marcus | Wait for the test booking I send (Phase 6).           | The booking in your existing booking tool, through the connector | []   | []   |
+| 3   | Dana   | Book while travelling in another time zone (Phase 6). | The shop's local time first, your time second                    | []   | []   |
 
 ## 8. Exploratory test charters
 
@@ -344,3 +401,4 @@ When `@a2a-js/sdk` changes version (R-10, DP-01), I run TC-17 to TC-23, TC-36, T
 | Version | Date       | Change                                                                                                                          | Author      |
 | ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------- |
 | 1.0     | 2026-11-09 | First baseline: Built cases TC-01 to TC-23, Phase 2 and 4 cases, partitions and boundaries, decision-table tests, UAT, charters | S. Jannisar |
+| 1.1     | 2026-11-09 | Round 5: protocol first (no pricing), minimal MCP gateway in v1, final QA fixes, frozen for the Phase 2 spike                   | S. Jannisar |

@@ -3,8 +3,8 @@
 | Field       | Value                                                                                         |
 | ----------- | --------------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-22                                                                                     |
-| Version     | 1.1                                                                                           |
-| Status      | Baselined for Phase 2                                                                         |
+| Version     | 1.2                                                                                           |
+| Status      | Frozen for Phase 2 spike                                                                      |
 | Date        | 2026-11-09                                                                                    |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                              |
 | Conforms to | Elmasri and Navathe EER notation; Chen ER notation; ISO/IEC 9075 SQL for the DDL in section 7 |
@@ -359,36 +359,77 @@ flowchart TB
 - **Reporter** FILES reports (a reporter exists only because of a report: total). Each report CONCERNS one listing.
 - **ModerationAction** records what an operator did about a report (suspend, dismiss, reinstate, remove a review, delist) with a statement of reasons and an appeal route, for the audit trail in FR-ADMIN-02 (Phase 5).
 
+### 2.7 Network slice (Later, L1 to L4)
+
+Conceptual only, frozen until the Phase 2 spike's evidence is in. It shows how the network vision (agent families, relationship tiers, sharing scopes, consultation) sits on the same parties and agent lines, so the Phase 2 to 6 schema leaves room for it. Attributes are in [09 §5.4](09-data-dictionary.md#54-network-entities-later-l1-to-l3-subscription-l4-unpriced).
+
+```mermaid
+flowchart TB
+  classDef later stroke-dasharray:2 2,fill:#eef4ff
+  Owner["Owner"]:::later
+  Owner --- owK(["<u>ownerId</u>"])
+  Owner --- owProf(["profile"])
+  FAMILY{"OWNS_LINE"}:::later
+  Owner == "(1,N)" === FAMILY
+  FAMILY == "(1,1)" === AL["AgentLine"]
+  AL --- alK(["<u>agentLineId</u>"])
+  AL --- alUrl(["cardUrl"])
+  RE[["RelationshipEdge"]]:::later
+  AL -- "(0,N) from" --- RE
+  AL -- "(0,N) to" --- RE
+  RE --- reTier(["tier"])
+  RE --- reSt(["status"])
+  SS["SharingScope"]:::later
+  EXPOSES{"EXPOSES"}
+  AL -- "(0,N)" --- EXPOSES
+  EXPOSES == "(1,1)" === SS
+  SS --- ssTier(["tier"])
+  SS --- ssScope(["scope"])
+  AR["AccessRequest"]:::later
+  AL -- "(0,N) asks" --- AR
+  AR --- arSt(["status"])
+  CO["Consultation"]:::later
+  AL -- "(0,N) asks" --- CO
+  CO --- coScope(["scope"])
+  SUB["Subscription (L4, unpriced)"]:::later
+  AL -- "(0,N)" --- SUB
+```
+
+- **RelationshipEdge** is an associative entity: it resolves the M:N relationship "agent line relates to agent line" and carries its own attributes (`tier`, `status`). Its key is the ordered pair (`fromLineId`, `toLineId`); a `friend` edge needs the matching edge in the other direction. Tiers, most trusted first: `owner`, `friend`, `subscriber` (Later, unpriced), `follower`, `public`; `blocked` is a status, not a tier (09 §6).
+- **OWNS_LINE** forms the agent family: every line in it is tier `owner` to the others (L1).
+- **SharingScope** is what a line exposes to each tier; it is enforced by policy, not by a model (L2). **AccessRequest** and **Consultation** are logged so the owner sees who asked what (L2, L3). **Subscription** is L4 and has no price attributes.
+
 ## 3. Relationship catalogue
 
 Cardinality ratio is read left to right. Participation: T total, P partial, for the left then the right entity.
 
-| Relationship  | Entities                            | Ratio             | Participation | Attributes                     | Identifying | Stored by                       | Status            |
-| ------------- | ----------------------------------- | ----------------- | ------------- | ------------------------------ | ----------- | ------------------------------- | ----------------- |
-| REPRESENTS    | Business, BusinessAgent             | 1:1               | T, T          |                                | No          | Business agent (its own config) | Built             |
-| USES          | Person, PersonalAgent               | 1:N               | T, T          |                                | No          | App                             | Phase 4           |
-| OFFERS        | Business, Service                   | 1:N               | T, T          |                                | No          | Business agent                  | Built (as `Book`) |
-| ISSUES        | BusinessAgent, Offer                | 1:N               | P, T          |                                | Yes         | Business agent                  | Phase 2           |
-| FOR_SERVICE   | Offer, Service                      | N:1               | T, P          | Snapshot of terms on the offer | No          | Business agent                  | Phase 2           |
-| DECIDES_ON    | Offer, Approval                     | 1:1               | P, T          |                                | Yes         | Personal agent                  | Phase 2           |
-| BECOMES       | Offer, Booking                      | 1:1               | P, T          |                                | No          | Business agent                  | Phase 2           |
-| HOLDS         | BusinessAgent, Booking              | 1:N               | P, T          |                                | No          | Business agent                  | Built (as `Book`) |
-| REPLACES      | Booking (old), Booking (new)        | 1:1 (recursive)   | P, P          |                                | No          | Business agent                  | Phase 2           |
-| RESCHEDULES   | Offer, Booking                      | 1:1               | P, P          |                                | No          | Business agent                  | Phase 2           |
-| HAS_CONTACT   | Booking, CustomerContact            | 1:1               | T, T          |                                | Yes         | Business agent                  | Phase 2           |
-| WRITES        | Agent, AuditEvent                   | 1:N               | T, T          |                                | Yes         | Each side, its own log          | Phase 2           |
-| KEEPS         | Person, Contact                     | 1:N               | P, T          |                                | No          | App                             | Phase 4           |
-| BACKED_BY     | Contact, DirectoryListing           | N:1               | P, P          |                                | No          | App (logical reference)         | Phase 4           |
-| TRACKS        | PersonalAgent, PersonalBooking      | 1:N               | P, T          |                                | Yes         | Personal agent                  | Phase 2           |
-| MIRRORS       | PersonalBooking, Booking            | 1:1 (cross-store) | T, P          |                                | No          | Logical only                    | Phase 2           |
-| REACHES       | Contact, Agent                      | N:1               | T, P          |                                | No          | App (logical reference)         | Phase 4           |
-| LISTED_AS     | Business, DirectoryListing          | 1:1               | P, T          |                                | No          | Directory                       | Phase 3           |
-| SUMMARISED_BY | Booking, InteractionRecord          | 1:1               | P, T          |                                | No          | Ratings service                 | Phase 5           |
-| CARRIES       | InteractionRecord, CustomerReview   | 1:1               | P, T          |                                | No          | Ratings service                 | Phase 5           |
-| MEASURED_BY   | BusinessAgent, AgentBehaviourMetric | 1:N               | P, T          |                                | No          | Ratings service                 | Phase 5           |
-| FILES         | Reporter, Report                    | 1:N               | T, T          |                                | No          | Directory                       | Phase 5           |
-| CONCERNS      | Report, DirectoryListing            | N:1               | T, P          |                                | No          | Directory                       | Phase 5           |
-| RESOLVES      | Report, ModerationAction            | 1:N               | P, T          |                                | No          | Directory                       | Phase 5           |
+| Relationship               | Entities                            | Ratio             | Participation | Attributes                     | Identifying | Stored by                       | Status            |
+| -------------------------- | ----------------------------------- | ----------------- | ------------- | ------------------------------ | ----------- | ------------------------------- | ----------------- |
+| RELATES (RelationshipEdge) | AgentLine, AgentLine                | M:N               | P, P          | tier, status                   | No          | Relationship graph service      | Later (L2)        |
+| REPRESENTS                 | Business, BusinessAgent             | 1:1               | T, T          |                                | No          | Business agent (its own config) | Built             |
+| USES                       | Person, PersonalAgent               | 1:N               | T, T          |                                | No          | App                             | Phase 4           |
+| OFFERS                     | Business, Service                   | 1:N               | T, T          |                                | No          | Business agent                  | Built (as `Book`) |
+| ISSUES                     | BusinessAgent, Offer                | 1:N               | P, T          |                                | Yes         | Business agent                  | Phase 2           |
+| FOR_SERVICE                | Offer, Service                      | N:1               | T, P          | Snapshot of terms on the offer | No          | Business agent                  | Phase 2           |
+| DECIDES_ON                 | Offer, Approval                     | 1:1               | P, T          |                                | Yes         | Personal agent                  | Phase 2           |
+| BECOMES                    | Offer, Booking                      | 1:1               | P, T          |                                | No          | Business agent                  | Phase 2           |
+| HOLDS                      | BusinessAgent, Booking              | 1:N               | P, T          |                                | No          | Business agent                  | Built (as `Book`) |
+| REPLACES                   | Booking (old), Booking (new)        | 1:1 (recursive)   | P, P          |                                | No          | Business agent                  | Phase 2           |
+| RESCHEDULES                | Offer, Booking                      | 1:1               | P, P          |                                | No          | Business agent                  | Phase 2           |
+| HAS_CONTACT                | Booking, CustomerContact            | 1:1               | T, T          |                                | Yes         | Business agent                  | Phase 2           |
+| WRITES                     | Agent, AuditEvent                   | 1:N               | T, T          |                                | Yes         | Each side, its own log          | Phase 2           |
+| KEEPS                      | Person, Contact                     | 1:N               | P, T          |                                | No          | App                             | Phase 4           |
+| BACKED_BY                  | Contact, DirectoryListing           | N:1               | P, P          |                                | No          | App (logical reference)         | Phase 4           |
+| TRACKS                     | PersonalAgent, PersonalBooking      | 1:N               | P, T          |                                | Yes         | Personal agent                  | Phase 2           |
+| MIRRORS                    | PersonalBooking, Booking            | 1:1 (cross-store) | T, P          |                                | No          | Logical only                    | Phase 2           |
+| REACHES                    | Contact, Agent                      | N:1               | T, P          |                                | No          | App (logical reference)         | Phase 4           |
+| LISTED_AS                  | Business, DirectoryListing          | 1:1               | P, T          |                                | No          | Directory                       | Phase 3           |
+| SUMMARISED_BY              | Booking, InteractionRecord          | 1:1               | P, T          |                                | No          | Ratings service                 | Phase 5           |
+| CARRIES                    | InteractionRecord, CustomerReview   | 1:1               | P, T          |                                | No          | Ratings service                 | Phase 5           |
+| MEASURED_BY                | BusinessAgent, AgentBehaviourMetric | 1:N               | P, T          |                                | No          | Ratings service                 | Phase 5           |
+| FILES                      | Reporter, Report                    | 1:N               | T, T          |                                | No          | Directory                       | Phase 5           |
+| CONCERNS                   | Report, DirectoryListing            | N:1               | T, P          |                                | No          | Directory                       | Phase 5           |
+| RESOLVES                   | Report, ModerationAction            | 1:N               | P, T          |                                | No          | Directory                       | Phase 5           |
 
 ## 4. Specialization and category catalogue
 
@@ -703,17 +744,17 @@ erDiagram
 
 I applied the nine-step algorithm (Elmasri and Navathe). Relation schemas use **bold** for the primary key and _italic_ for foreign keys.
 
-| Step | Rule                                             | Applied to                                                                                                        | Result                                                                                                                                                                                                                                                                                                      |
-| ---- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1    | Strong entity: one relation                      | Business, Person, Agent, Service, Booking, Contact, DirectoryListing, InteractionRecord, Report, ModerationAction | `business`, `person`, `agent`, `booking`, `contact`, `directory_listing`, `interaction_record`, `report`, `moderation_action`; composite attributes flattened (`terms`, `period`, `correlation`)                                                                                                            |
-| 2    | Weak entity: owner key plus partial key          | Offer, Approval, AuditEvent, CustomerContact, PersonalBooking                                                     | `service(`**service_id**`)` is now strong (step 1), `offer(`**business_id, offer_id**`)`, `approval(`**agent_id, business_card_url, offer_id**`)`, `audit_event(`**agent_id, seq**`)`, `customer_contact(`**business_id, booking_id**`)`, `personal_booking(`**agent_id, business_card_url, booking_id**`)` |
-| 3    | 1:1 relationships: foreign key on the total side | REPRESENTS, BECOMES, LISTED_AS, SUMMARISED_BY, CARRIES, REPLACES, RESCHEDULES                                     | `booking.`*offer_id* (unique), `directory_listing.`*business_id* (unique), `interaction_record.`*booking_id* (unique), `customer_review.`*interaction_id* (unique), `booking.`*replaces_booking_id*, `offer.`*replaces_booking_id*; REPRESENTS merged (the agent's config holds `business_id`)              |
-| 4    | 1:N relationships: foreign key on the N side     | USES, HOLDS, FOR_SERVICE, KEEPS, BACKED_BY, MEASURED_BY, FILES, CONCERNS, RESOLVES                                | `personal_agent.`*person_id*, `booking.`*business_id*, `offer.`*service_id*, `contact.agent_line_id` (logical, REACHES), `contact.`*person_id*, `contact.listing_id` (logical), `agent_behaviour_metric.`*agent_id*, `report.`*reporter_id*, `report.`*listing_id*, `moderation_action.`*report_id*         |
-| 5    | M:N relationships: own relation                  | None in the model                                                                                                 | Service to tag and listing to service name are multivalued attributes, handled in step 6                                                                                                                                                                                                                    |
-| 6    | Multivalued attributes: own relation             | `openingHours`, `tags`, `serviceNames`                                                                            | `opening_hours(`**business_id, day_of_week, open_minute**`, close_minute)`, `service_tag(`**service_id, tag**`)`, `listing_service(`**listing_id, service_name**`)`                                                                                                                                         |
-| 7    | n-ary relationships                              | None: the candidate ternary Person, Offer, Decision was reified as weak entity Approval (2.4)                     | No relation                                                                                                                                                                                                                                                                                                 |
-| 8    | Specialization                                   | Party (8B), Agent (8C), Review (8B)                                                                               | No `party` relation; `agent(`**agent_id**`, owner_kind, card_url, ...)`; `customer_review` and `agent_behaviour_metric` as separate relations                                                                                                                                                               |
-| 9    | Categories                                       | Reporter                                                                                                          | `reporter(`**reporter_id**`, kind, subject_id)`, with `agent.`*reporter_id* for agents and the person's `reporter_id` held by the directory account                                                                                                                                                         |
+| Step | Rule                                             | Applied to                                                                                                                                           | Result                                                                                                                                                                                                                                                                                                      |
+| ---- | ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1    | Strong entity: one relation                      | Business, Person, Agent, Service, Booking, Contact, DirectoryListing, InteractionRecord, Report, ModerationAction                                    | `business`, `person`, `agent`, `booking`, `contact`, `directory_listing`, `interaction_record`, `report`, `moderation_action`; composite attributes flattened (`terms`, `period`, `correlation`)                                                                                                            |
+| 2    | Weak entity: owner key plus partial key          | Offer, Approval, AuditEvent, CustomerContact, PersonalBooking                                                                                        | `service(`**service_id**`)` is now strong (step 1), `offer(`**business_id, offer_id**`)`, `approval(`**agent_id, business_card_url, offer_id**`)`, `audit_event(`**agent_id, seq**`)`, `customer_contact(`**business_id, booking_id**`)`, `personal_booking(`**agent_id, business_card_url, booking_id**`)` |
+| 3    | 1:1 relationships: foreign key on the total side | REPRESENTS, BECOMES, LISTED_AS, SUMMARISED_BY, CARRIES, REPLACES, RESCHEDULES                                                                        | `booking.`*offer_id* (unique), `directory_listing.`*business_id* (unique), `interaction_record.`*booking_id* (unique), `customer_review.`*interaction_id* (unique), `booking.`*replaces_booking_id*, `offer.`*replaces_booking_id*; REPRESENTS merged (the agent's config holds `business_id`)              |
+| 4    | 1:N relationships: foreign key on the N side     | USES, HOLDS, FOR_SERVICE, KEEPS, BACKED_BY, MEASURED_BY, FILES, CONCERNS, RESOLVES                                                                   | `personal_agent.`*person_id*, `booking.`*business_id*, `offer.`*service_id*, `contact.agent_line_id` (logical, REACHES), `contact.`*person_id*, `contact.listing_id` (logical), `agent_behaviour_metric.`*agent_id*, `report.`*reporter_id*, `report.`*listing_id*, `moderation_action.`*report_id*         |
+| 5    | M:N relationships: own relation                  | RelationshipEdge (Later, L2): agent line to agent line, an associative entity with `tier` and `status` (2.7); none in the Phase 1 to 6 booking model | Service to tag and listing to service name are multivalued attributes, handled in step 6                                                                                                                                                                                                                    |
+| 6    | Multivalued attributes: own relation             | `openingHours`, `tags`, `serviceNames`                                                                                                               | `opening_hours(`**business_id, day_of_week, open_minute**`, close_minute)`, `service_tag(`**service_id, tag**`)`, `listing_service(`**listing_id, service_name**`)`                                                                                                                                         |
+| 7    | n-ary relationships                              | None: the candidate ternary Person, Offer, Decision was reified as weak entity Approval (2.4)                                                        | No relation                                                                                                                                                                                                                                                                                                 |
+| 8    | Specialization                                   | Party (8B), Agent (8C), Review (8B)                                                                                                                  | No `party` relation; `agent(`**agent_id**`, owner_kind, card_url, ...)`; `customer_review` and `agent_behaviour_metric` as separate relations                                                                                                                                                               |
+| 9    | Categories                                       | Reporter                                                                                                                                             | `reporter(`**reporter_id**`, kind, subject_id)`, with `agent.`*reporter_id* for agents and the person's `reporter_id` held by the directory account                                                                                                                                                         |
 
 Resulting schemas, business-agent store:
 
@@ -859,7 +900,7 @@ CREATE TABLE offer (
   issued_at           timestamptz NOT NULL,
   expires_at          timestamptz NOT NULL CHECK (expires_at > issued_at),             -- issued_at + P-01
   reserved_until      timestamptz,                                                     -- Later
-  state               text NOT NULL CHECK (state IN ('held','booked','declined','expired','released','reserved')),
+  state               text NOT NULL CHECK (state IN ('held','booked','declined','expired','released','reserved')), -- 'reserved' is Later (manual approval)
   state_changed_at    timestamptz NOT NULL,
   task_id             text UNIQUE,
   replaces_booking_id text,
@@ -881,7 +922,7 @@ CREATE TABLE booking (
   cancel_task_id      text UNIQUE,
   start_at            timestamptz NOT NULL,
   duration_minutes    integer NOT NULL CHECK (duration_minutes BETWEEN 1 AND 1440),
-  status              text NOT NULL CHECK (status IN ('confirmed','cancelled','rescheduled','completed','no_show','disputed','unresolved')),
+  status              text NOT NULL CHECK (status IN ('confirmed','cancelled','rescheduled','awaiting_outcome','completed','no_show','disputed','unresolved')),
   cancelled_by        text CHECK (cancelled_by IN ('person','business','operator')),
   outcome_by_business text CHECK (outcome_by_business IN ('completed','no_show')),
   outcome_by_customer text CHECK (outcome_by_customer IN ('as_booked','not_as_booked','did_not_go')),
@@ -982,7 +1023,7 @@ CREATE TABLE offer (
   issued_ms           INTEGER NOT NULL CHECK (typeof(issued_ms) = 'integer'),
   expires_ms          INTEGER NOT NULL CHECK (expires_ms > issued_ms),
   reserved_until_ms   INTEGER,
-  state               TEXT NOT NULL CHECK (state IN ('held','booked','declined','expired','released','reserved')),
+  state               TEXT NOT NULL CHECK (state IN ('held','booked','declined','expired','released','reserved')), -- 'reserved' is Later (manual approval)
   state_changed_ms    INTEGER NOT NULL CHECK (typeof(state_changed_ms) = 'integer'),
   task_id             TEXT UNIQUE,
   replaces_booking_id TEXT,
@@ -1004,7 +1045,7 @@ CREATE TABLE booking (
   cancel_task_id      TEXT UNIQUE,
   start_ms            INTEGER NOT NULL CHECK (typeof(start_ms) = 'integer' AND start_ms >= 0),
   duration_minutes    INTEGER NOT NULL CHECK (duration_minutes BETWEEN 1 AND 1440),
-  status              TEXT NOT NULL CHECK (status IN ('confirmed','cancelled','rescheduled','completed','no_show','disputed','unresolved')),
+  status              TEXT NOT NULL CHECK (status IN ('confirmed','cancelled','rescheduled','awaiting_outcome','completed','no_show','disputed','unresolved')),
   cancelled_by        TEXT CHECK (cancelled_by IN ('person','business','operator')),
   outcome_by_business TEXT CHECK (outcome_by_business IN ('completed','no_show')),
   outcome_by_customer TEXT CHECK (outcome_by_customer IN ('as_booked','not_as_booked','did_not_go')),
@@ -1132,3 +1173,4 @@ A person's erasure request (P-13) also triggers a request to each business agent
 | ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
 | 1.0     | 2026-11-09 | First baseline: conceptual EER in Chen notation, relationship and specialization catalogues, logical EERD per store, nine-step mapping, normalization, DDL, indexes, privacy overlay                                                                                                                                                                                                                                                                                                                                                                                                                                              | S. Jannisar |
 | 1.1     | 2026-11-09 | Round 3: expert panel audit, user-to-user reframing, US jurisdiction: proposed items adopted into 08 and 09; agent lines between users and REACHES for person-to-person contacts; `serviceId` surrogate key (Service now strong); booking snapshot, outcomes and `stateChangedAt`; `customerRef` replaced by `CustomerContact` (total); `a2a_task` modelled; `requestMessageId` dedupe; states without `purged` and `deleted`, with `released` for early release, `disputed`, `unresolved`; SQLite INTEGER epoch ms, WAL, `BEGIN IMMEDIATE`, Litestream; SQLite and Postgres DDL with the same CHECKs; RLS and a role per context | S. Jannisar |
+| 1.2     | 2026-11-09 | Round 5: protocol first (no pricing), minimal MCP gateway in v1, final QA fixes, frozen for the Phase 2 spike                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | S. Jannisar |

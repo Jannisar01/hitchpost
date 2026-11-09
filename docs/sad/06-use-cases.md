@@ -3,8 +3,8 @@
 | Field       | Value                                                                                   |
 | ----------- | --------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-06                                                                               |
-| Version     | 1.3                                                                                     |
-| Status      | Baselined for Phase 2                                                                   |
+| Version     | 1.5                                                                                     |
+| Status      | Frozen for Phase 2 spike                                                                |
 | Date        | 2026-11-09                                                                              |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                        |
 | Conforms to | ISO/IEC/IEEE 29148:2018 (operational scenarios); UML 2.5 use case and sequence notation |
@@ -302,7 +302,7 @@ sequenceDiagram
 
 1. Dana finds a business (UC-06) and taps "Add contact".
 2. The app stores the contact with its verified card URL.
-3. Dana opens the chat and types "cut Thursday after work". The app turns this into a structured request she confirms (service, window).
+3. Dana opens the chat and picks a service, a day and a time window from structured pickers. Free text is not parsed before the language-model stage.
 4. The conversation follows UC-01; offers appear as approval cards (UC-02).
 
 **Alternate flows**
@@ -391,7 +391,7 @@ sequenceDiagram
 
 - **Actors:** Dana, Dana's agent, Jordan (Dana's friend), Jordan's agent.
 - **Preconditions:** Dana and Jordan each have an agent line and have added each other as contacts (UC-07). Each agent can read its own owner's free and busy times; neither shares a calendar.
-- **Trigger:** Dana asks her agent to find an hour with Jordan next week ("coffee with Jordan, weekday after 6 pm").
+- **Trigger:** Dana picks Jordan, "meeting, 60 min", weekdays next week and "after 6 pm" from structured pickers.
 - **Postconditions:** both people approved the same time, both calendars have the event, and both audit logs record the offer and both decisions. Or nothing is scheduled.
 - **Related:** FR-APP-01, FR-APP-06, FR-APP-07, FR-GATE-01 to FR-GATE-04, NFR-PRIV-01.
 
@@ -417,7 +417,7 @@ sequenceDiagram
     participant JA as Jordan's agent
     actor Jordan
 
-    Dana->>DA: coffee with Jordan, weekday after 6 pm
+    Dana->>DA: Jordan, meeting 60 min, weekdays after 6 pm
     DA->>JA: availability_request(window)
     JA->>JA: earliest free time from Jordan's free and busy
     JA-->>DA: offer(Tue 6:00 pm, 60 min)
@@ -431,6 +431,32 @@ sequenceDiagram
     JA->>JA: write Jordan's calendar
 ```
 
+## UC-12. Use your own assistant through the MCP gateway
+
+**Phase 3 (minimal MCP gateway).** The full gateway (relationships, consultation) is L3.
+
+- **Actors:** Jordan, Jordan's own assistant (an MCP client such as Claude, ChatGPT or Gemini), the Hitchpost MCP gateway, a business agent line (for example Main Street Barbers), the directory.
+- **Preconditions:** Jordan connected the gateway to his assistant and signed in once, so the gateway acts as his personal agent. The business is listed and verified (UC-05).
+- **Trigger:** Jordan asks his assistant to book a haircut. His assistant is AI; Hitchpost's own agents are rule-based software until the language-model stage.
+- **Postconditions:** a booking exists only if Jordan explicitly confirmed the validated offer; both sides logged the offer and the decision. Otherwise nothing is booked.
+- **Related:** FR-DIR-07, FR-MSG-19, FR-GATE-06, FR-GATE-01 to FR-GATE-04, FR-MSG-03, FR-MSG-04, FR-MSG-16.
+
+**Main flow**
+
+1. The assistant calls the gateway's `find_agent_line` tool (service "haircut", area) and gets verified listings with profiles.
+2. The assistant calls `read_agent_line` for the chosen business: agent card, owner profile, services.
+3. The assistant calls `request_availability` (`serviceId`, window). The gateway sends the `availability_request` over A2A, validates the reply exactly as the reference personal agent does, and returns the offer fields.
+4. The assistant shows the offer and calls `approve_offer`. The gateway does not send anything yet: it returns a confirmation step (a deep link to the approval sheet, or a one-time confirmation the assistant must present to Jordan with the validated fields).
+5. Jordan confirms. The gateway records the approval and sends `booking_request` (UC-02 from step 4).
+6. The gateway returns `booking_confirmed` to the assistant after checking it matches the approved offer.
+
+**Alternate flows**
+
+- **3a.** The reply fails validation or doesn't match the request: the tool returns an error and no offer.
+- **4a.** Jordan doesn't confirm before the hold ends (P-01, P-09): the offer expires; nothing is booked.
+- **4b.** The assistant tries to approve without the confirmation step: refused (FR-GATE-06).
+- **5a.** The business refuses (`booking_rejected`): the tool reports the reason; nothing is booked.
+
 ## Revision history
 
 | Version | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Author      |
@@ -440,3 +466,4 @@ sequenceDiagram
 | 1.1     | 2026-11-09 | Remediation after independent review: UC-02 Reserved and WORKING with polling, recheck, idempotent retry, clock margin; UC-03 `offer_declined`; UC-04 `cancel_rejected`, `replacesBookingId` atomic swap, context binding, shop-side cancel Later; UC-08 verified interaction definition                                                                                                                                                                                                                                                                                                                                                                                                      | S. Jannisar |
 | 1.2     | 2026-11-09 | Second remediation after regrade: `offerId` and `bookingToken` as capabilities instead of `contextId`; extension in the `A2A-Extensions` header; retries by `GetTask` or resend with `duplicateOf`; `reservedUntil`; reschedule as a Message with the cutoff checked at the question and at the swap                                                                                                                                                                                                                                                                                                                                                                                          | S. Jannisar |
 | 1.3     | 2026-11-09 | Round 3: expert panel audit, user-to-user reframing, US jurisdiction: new UC-11 person-to-person time agreement; standing approval only in the pilot (manual approval in UC-02 labelled Later); customer block and offer disclosure in UC-02; checking state instead of polling; paused-listing rejection; business cancellation by operator relay (pilot) and notice (Phase 4) in UC-04; install-key caps and availability de-duplication in UC-03; listing edit in Phase 3 and confusable names in UC-05; repeat booking in UC-07; Disputed and Unresolved outcomes in UC-08; UC-09 and UC-10 manual moderation in Phase 5 with statement of reasons, automatic suspension Later, pause all | S. Jannisar |
+| 1.5     | 2026-11-09 | Round 5: protocol first (no pricing), minimal MCP gateway in v1, final QA fixes, frozen for the Phase 2 spike                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | S. Jannisar |

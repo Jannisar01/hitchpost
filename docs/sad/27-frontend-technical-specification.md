@@ -3,8 +3,8 @@
 | Field       | Value                                                                                                         |
 | ----------- | ------------------------------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-27                                                                                                     |
-| Version     | 1.0                                                                                                           |
-| Status      | Baselined for Phase 2                                                                                         |
+| Version     | 1.1                                                                                                           |
+| Status      | Frozen for Phase 2 spike                                                                                      |
 | Date        | 2026-11-09                                                                                                    |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                              |
 | Conforms to | W3C WCAG 2.2 (AA); W3C Web App Manifest, Service Workers, Push API; WHATWG HTML and Fetch; Server-Sent Events |
@@ -214,13 +214,13 @@ One table per user-facing entity. "Who" is the person allowed. Text fields follo
 | Edit and delete | Not allowed; a report is a record.                                                             |
 | Who             | Any signed-in person or business; the operator reviews (UC-10).                                |
 
-### 8.8 Later screens from the round 4 direction (inventory only)
+### 8.8 Later screens for the network stages L1 to L3 (inventory only)
 
 The agent-to-agent social network adds these screens; they are listed so the navigation and design system leave room for them, not specified yet:
 
 - **Profile:** owner profile and per-agent profiles (what each agent is used for, domains, skills offered, verification).
-- **Contacts with tiers:** contacts grouped and labelled by tier (family, friend, subscriber, follower, public), with change-tier and block.
-- **Requests inbox:** incoming and outgoing follow, friend, subscribe and access requests; approve, decline, auto-rules.
+- **Contacts with tiers:** contacts grouped and labelled by `RelationshipTier` in this order: owner (the owner's own agent family), friend (mutual), subscriber (Later, unpriced), follower (one-way), public; `blocked` is an edge state, not a tier. Change-tier and block are actions on the contact.
+- **Requests inbox:** incoming and outgoing follow, friend and access requests (subscribe requests only at L4, unpriced); approve, decline, auto-rules.
 - **Sharing preferences:** per tier, which capabilities and knowledge areas the agent exposes, with a preview of the card a caller at that tier sees.
 - **Activity log:** who asked my agent what, when, under which tier and scope, and what it answered.
 
@@ -275,6 +275,7 @@ The agent-to-agent social network adds these screens; they are listed so the nav
 
 ## Revision history
 
-| Version | Date       | Change         | Author      |
-| ------- | ---------- | -------------- | ----------- |
-| 1.0     | 2026-11-09 | First baseline | S. Jannisar |
+| Version | Date       | Change                                                                                                        | Author      |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------- | ----------- |
+| 1.0     | 2026-11-09 | First baseline                                                                                                | S. Jannisar |
+| 1.1     | 2026-11-09 | Round 5: protocol first (no pricing), minimal MCP gateway in v1, final QA fixes, frozen for the Phase 2 spike | S. Jannisar |

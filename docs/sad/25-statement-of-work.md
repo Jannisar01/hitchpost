@@ -3,15 +3,15 @@
 | Field       | Value                                                                                                                     |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-25                                                                                                                 |
-| Version     | 1.4                                                                                                                       |
-| Status      | Baselined for Phase 2                                                                                                     |
+| Version     | 1.5                                                                                                                       |
+| Status      | Frozen for Phase 2 spike                                                                                                  |
 | Date        | 2026-11-09                                                                                                                |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                                          |
 | Conforms to | PMI PMBOK statement-of-work practice; ISO 21502:2020 project management (scope, deliverables, acceptance, change control) |
 
 ## 1. Purpose and scope
 
-This statement of work sets out who does what to take Hitchpost from Phase 1 (Built) to the v1 decision (M-08), what each deliverable is, how it is accepted, what it costs and how changes are handled. The work breakdown, estimates and schedule it relies on are in [16 Project plan](16-project-plan.md); where this document quotes a date or a figure, 16 is the source.
+This statement of work sets out who does what to take Hitchpost from Phase 1 (Built: the offer exchange only) to the v1 decision (M-08), what each deliverable is, how it is accepted, what it costs and how changes are handled. The work breakdown, estimates and schedule it relies on are in [16 Project plan](16-project-plan.md); where this document quotes a date or a figure, 16 is the source.
 
 ## 2. Parties and roles
 
@@ -27,49 +27,49 @@ This statement of work sets out who does what to take Hitchpost from Phase 1 (Bu
 
 ## 3. Background
 
-Hitchpost is an agent-to-agent social network: AI agents talk to each other across vendors under rules their owners set ([23 BRD](23-business-requirements-document.md), [24 PRD](24-product-requirements-document.md)). Booking with businesses, starting with barbers, is the first proven use case and the scope of this statement of work. Phase 1 is Built: two agents exchange typed, validated messages over A2A, with 23 passing tests.
+For now Hitchpost is an open protocol: the `hitchpost/1` extension on A2A, an MIT-licensed reference implementation and an MCP gateway, so that anyone's agent can talk to other agents directly ([23 BRD](23-business-requirements-document.md), [24 PRD](24-product-requirements-document.md), [ADR 0020](../decisions/0020-protocol-first.md)). Nobody pays; this is unpaid open-source work with a bounded cash budget. Hitchpost agents are rule-based software until a language model is added (the language-model stage); we don't call them AI before then. Booking with businesses, starting with barbers, is the first proven task and the scope of this statement of work. Phase 1 is Built: two agents exchange typed, validated messages over A2A, with 23 passing tests. Nothing in Phase 2 or later is built yet; the Phase 2 spike comes first.
 
 ## 4. Objectives
 
-1. Test the riskiest assumptions (A-01, A-02, A-03, A-05) before building more ([03](03-business-case.md)).
+1. Prove the Phase 2 booking protocol in code against the A2A SDK (the spike) and test the riskiest assumptions (A-01, A-02, A-03, A-05, A-12) before building more ([03](03-business-case.md)).
 2. Deliver the booking releases R1 to R5 ([24](24-product-requirements-document.md#7-release-scope-by-phase)) with every phase gate met.
-3. Run the pilot in one Texas neighbourhood and reach the v1 decision at M-08 on the evidence of RC 1 to RC 6.
+3. Run the pilot in one Texas neighbourhood and reach the v1 decision at M-08 on adoption evidence: independent implementations passing the conformance kit and human-approved bookings, including bookings through the MCP gateway from people's own assistants ([01](01-vision-and-scope.md)).
 
 ## 5. Scope of work
 
-| Phase                  | Work                                                                                                                                                                                                                                            | Work packages in [16](16-project-plan.md)                 |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| Discovery              | Disclosed Wizard-of-Oz study (n = 30, 10 weeks, research consent), 10 business interviews with the price question, booking-tool API audit, competitor and price analysis, trust interviews                                                      | WP-0.1 to WP-0.4                                          |
-| 2 Approval gate        | Offer store, booking Task, approval type and gate, audit log, cancel and reschedule, customer block, operator-relayed cancel, persistence, conformance kit and extension header, capability tokens, holds cap, book validation, health and logs | WP-2.1 to WP-2.13 (manual approval WP-2.6 moves to Later) |
-| 3 Directory            | Directory service, verification, search, card origin check                                                                                                                                                                                      | WP-3.2 to WP-3.5                                          |
-| 4 Client app           | UI design and prototype test, app shell and contacts, built-in agent, approval screen, bookings, calendar write, reminders, business cancel notice, person-to-person scheduling, accessibility, dashboard                                       | WP-4.1 to WP-4.7                                          |
-| 5 Ratings              | Interaction records and metrics, verified-only reviews, reporting and moderation trail                                                                                                                                                          | WP-5.1 to WP-5.3                                          |
-| 6 Production and pilot | Hosting, agent authentication, rate limits, time zones, real booking connector, observability and backups, privacy and retention, security audit and external review, hosted agents, closed alpha S1, pilot S2, third-party interop             | WP-6.1 to WP-6.12                                         |
+| Phase                  | Work                                                                                                                                                                                                                                            | Work packages in [16](16-project-plan.md)                                        |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Discovery              | Disclosed Wizard-of-Oz study (n = 30, 10 weeks, research consent), 10 business interviews about past behaviour, booking-tool API audit, competitor analysis, trust interviews                                                                   | WP-0.1 to WP-0.4                                                                 |
+| 2 Approval gate        | Offer store, booking Task, approval type and gate, audit log, cancel and reschedule, customer block, operator-relayed cancel, persistence, conformance kit and extension header, capability tokens, holds cap, book validation, health and logs | WP-2.1 to WP-2.13 (manual approval WP-2.6 moves to Later)                        |
+| 3 Directory            | Directory service, verification, search, card origin check, minimal MCP gateway (find an agent line, read its card and profile, ask availability, approve with explicit confirmation)                                                           | WP-3.2 to WP-3.5 and the minimal MCP gateway package in [16](16-project-plan.md) |
+| 4 Client app           | UI design and prototype test, app shell and contacts, built-in agent, approval screen, bookings, calendar write, reminders, business cancel notice, person-to-person scheduling, accessibility, dashboard                                       | WP-4.1 to WP-4.7                                                                 |
+| 5 Ratings              | Interaction records and metrics, verified-only reviews, reporting and moderation trail                                                                                                                                                          | WP-5.1 to WP-5.3                                                                 |
+| 6 Production and pilot | Hosting, agent authentication, rate limits, time zones, real booking connector, observability and backups, privacy and retention, security audit and external review, hosted agents, closed alpha S1, pilot S2, third-party interop             | WP-6.1 to WP-6.12                                                                |
 
-Post-v1 network releases (identity and agent family, profiles and directory of agents, relationships and access scopes, MCP gateway, consultation, paid subscriptions) are out of this statement of work. They get their own statement of work after M-08, at a high level:
+The network stages after v1 (L1 to L4) are out of this statement of work. They get their own statement of work after M-08, at a high level:
 
-| Release                            | Outcome                                                            | Prerequisite                     |
-| ---------------------------------- | ------------------------------------------------------------------ | -------------------------------- |
-| N1 Identity and agent family       | One owner, many agent lines across vendors                         | Agent authentication (WP-6.2)    |
-| N2 Profiles and directory          | Owner and agent profiles; public agents searchable with businesses | N1                               |
-| N3 Relationships and access scopes | Tiers, requests, per-tier scopes, activity log                     | N1, N2                           |
-| N4 MCP gateway                     | People's own assistants use the network                            | N3                               |
-| N5 Consultation                    | Scoped information exchange between agents                         | N3, N4                           |
-| N6 Paid subscriptions              | Payments, payee KYC, US subscription rules                         | N5, a payments provider, counsel |
+| Stage | Outcome                                                                                        | Prerequisite                  |
+| ----- | ---------------------------------------------------------------------------------------------- | ----------------------------- |
+| L1    | Identity and agent family: one owner, many agent lines across vendors                          | Agent authentication (WP-6.2) |
+| L2    | Owner and agent profiles, public directory of agents, relationships and access scopes per tier | L1                            |
+| L3    | Full MCP gateway (contacts, relationships) and consultation between agents                     | L2                            |
+| L4    | Subscriptions to consult an agent, unpriced and only if adoption warrants it                   | L3, counsel                   |
+
+Tiers, in order: owner (the owner's own agent family), friend (mutual), subscriber (Later, unpriced), follower (one-way), public; `blocked` is an edge state.
 
 ## 6. Deliverables and acceptance criteria
 
-| ID    | Deliverable                                         | Acceptance criteria                                                                                                                                                                                         | Due        |
-| ----- | --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| DL-01 | Discovery report (A-01, A-04)                       | Pre-registered bands applied with 95% confidence intervals; continue, iterate or kill decision recorded                                                                                                     | M-01       |
-| DL-02 | Business and market report (A-02, A-03, A-05, A-07) | 10 interviews, API audit, connector shortlist, price signal; decision recorded                                                                                                                              | M-02       |
-| DL-03 | Release R1 (Phase 2)                                | M-03 gate in [16](16-project-plan.md): no booking without a logged approval proven by tests; extension header (TC-51); duplicates and tokens per TC-36 and TC-48; CI green on `main` with branch protection | M-03       |
-| DL-04 | Release R2 (Phase 3)                                | M-04 gate: verified registration, unverified refused, origin check, search                                                                                                                                  | M-04       |
-| DL-05 | Release R3 (Phase 4)                                | M-05 gate: UC-02 end to end in the app, dashboard outcome marking, approval screen shows validated data only, WCAG 2.2 AA audit; external human review done                                                 | M-05       |
-| DL-06 | Release R4 (Phase 5)                                | M-06 gate: only verified interactions rated, customer outcome prompt, report and takedown with trail                                                                                                        | M-06       |
-| DL-07 | Pilot go-live                                       | M-07: S1 exit criteria and the go/no-go checklist in [17](17-transition-plan.md) met, including the legal pack reviewed by counsel and a named backup operator                                              | M-07       |
-| DL-08 | v1 decision pack                                    | M-08: RC 1 to RC 6 measured over P-21; continue, extend or stop recorded                                                                                                                                    | M-08       |
-| DL-09 | Documentation                                       | Each release updates the SA&D package, decision records, bug log and journey; `pnpm docs:check` passes                                                                                                      | Every gate |
+| ID    | Deliverable                                         | Acceptance criteria                                                                                                                                                                                                                                                                                              | Due        |
+| ----- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| DL-01 | Discovery report (A-01, A-04)                       | Pre-registered bands applied with 95% confidence intervals; continue, iterate or kill decision recorded                                                                                                                                                                                                          | M-01       |
+| DL-02 | Business and market report (A-02, A-03, A-05, A-07) | 10 interviews, API audit, connector shortlist, adoption signal; decision recorded                                                                                                                                                                                                                                | M-02       |
+| DL-03 | Release R1 (Phase 2)                                | M-03 gate in [16](16-project-plan.md): no booking without a logged approval proven by tests; extension header (TC-51); duplicates and tokens per TC-36 and TC-48; CI green on `main` with branch protection                                                                                                      | M-03       |
+| DL-04 | Release R2 (Phase 3)                                | M-04 gate: verified registration, unverified refused, origin check, search; minimal MCP gateway books only with explicit confirmation (FR-GATE-06)                                                                                                                                                               | M-04       |
+| DL-05 | Release R3 (Phase 4)                                | M-05 gate: UC-02 end to end in the app, dashboard outcome marking, approval screen shows validated data only, WCAG 2.2 AA audit; external human review done                                                                                                                                                      | M-05       |
+| DL-06 | Release R4 (Phase 5)                                | M-06 gate: only verified interactions rated, customer outcome prompt, report and takedown with trail                                                                                                                                                                                                             | M-06       |
+| DL-07 | Pilot go-live                                       | M-07: S1 exit criteria and the go/no-go checklist in [17](17-transition-plan.md) met, including the legal pack reviewed by counsel and a named backup operator                                                                                                                                                   | M-07       |
+| DL-08 | v1 decision pack                                    | M-08: release criteria in [01](01-vision-and-scope.md) measured (at least 2 independent implementations pass the conformance kit; at least 30 human-approved bookings, at least 10 through the MCP gateway; zero bookings without a logged approval; repeat use over 8 weeks); continue, extend or stop recorded | M-08       |
+| DL-09 | Documentation                                       | Each release updates the SA&D package, decision records, bug log and journey; `pnpm docs:check` passes                                                                                                                                                                                                           | Every gate |
 
 ## 7. Milestones and schedule
 
@@ -101,7 +101,7 @@ A2A SDK; a booking tool API; GitHub (repository, CI, branch protection); a hosti
 
 ## 10. Out of scope
 
-Payments and deposits; replacing booking tools; markets outside the United States; any language model in the commit path; the post-v1 network releases N1 to N6 (section 5); 24-hour operations support (P-28 limits SEV1 cover to listed opening hours).
+Prices, fees, deposits and payments of any kind (protocol first; monetization Later and undecided); replacing booking tools; markets outside the United States; any language model in the commit path; the network stages L1 to L4 (section 5); 24-hour operations support (P-28 limits SEV1 cover to listed opening hours).
 
 ## 11. Responsibilities (RACI)
 
@@ -151,7 +151,7 @@ These are estimates, November 2026 to May 2028. The subtotal already includes th
 
 ## 16. Risks
 
-The risk register is in [03 Business case](03-business-case.md) and the consolidated RAID log in [33](33-raid-log.md). The risks that most affect this statement of work: R-01 (people don't adopt), R-02 (platforms keep agents in their silos, now an issue), R-03 (booking tools block automation), R-11 (solo bandwidth) and R-12 (cold start).
+The risk register is in [03 Business case](03-business-case.md) and the consolidated RAID log in [33](33-raid-log.md). The risks that most affect this statement of work: R-01 (people don't adopt), R-02 (platforms keep agents in their silos, now an issue), R-03 (booking tools block automation), R-11 (solo bandwidth), R-12 (cold start), R-25 (adoption of an unpaid protocol) and R-26 (sustaining a solo open-source project).
 
 ## 17. Sign-off
 
@@ -161,11 +161,12 @@ The risk register is in [03 Business case](03-business-case.md) and the consolid
 | External human reviewer | To be named        | Pending, at M-05     |            |
 | Counsel                 | To be engaged      | Pending, before S1   |            |
 
-The owner approves his own statement of work; that limit is stated in [00](00-document-control.md) and offset by the external review at M-05 and M-07.
+The owner approves their own statement of work; that limit is stated in [00](00-document-control.md) and offset by the external review at M-05 and M-07.
 
 ## Revision history
 
-| Version | Date       | Change                                                                                                                                       | Author      |
-| ------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 1.0     | 2026-11-09 | First baseline, rounds 3 and 4: booking releases to v1 in scope, network releases N1 to N6 named as later work, legal and research re-costed | S. Jannisar |
-| 1.4     | 2026-11-09 | Reconciled to the project plan (16 v1.3): milestone dates and budget to v1; economics re-timed                                               | S. Jannisar |
+| Version | Date       | Change                                                                                                                                                                                                                                                                                                                                   | Author      |
+| ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 1.0     | 2026-11-09 | First baseline, rounds 3 and 4: booking releases to v1 in scope, network releases N1 to N6 named as later work, legal and research re-costed                                                                                                                                                                                             | S. Jannisar |
+| 1.4     | 2026-11-09 | Reconciled to the project plan (16 v1.3): milestone dates and budget to v1; economics re-timed                                                                                                                                                                                                                                           | S. Jannisar |
+| 1.5     | 2026-11-09 | Round 5: protocol first (no pricing), minimal MCP gateway in v1, final QA fixes, frozen for the Phase 2 spike. No price question in discovery; minimal MCP gateway in Phase 3 scope and the M-04 gate; v1 decision on adoption criteria; N1 to N6 replaced by stages L1 to L4 with the one tier list; spike named as the first objective | S. Jannisar |

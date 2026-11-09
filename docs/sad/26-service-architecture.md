@@ -3,19 +3,19 @@
 | Field       | Value                                                                                                                                                  |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Document ID | HP-SAD-26                                                                                                                                              |
-| Version     | 1.0                                                                                                                                                    |
-| Status      | Baselined for Phase 2                                                                                                                                  |
+| Version     | 1.1                                                                                                                                                    |
+| Status      | Frozen for Phase 2 spike                                                                                                                               |
 | Date        | 2026-11-09                                                                                                                                             |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                                                                       |
 | Conforms to | Domain-driven design (Evans, strategic design: bounded contexts and context maps); microservices patterns (decomposition, outbox, idempotent consumer) |
 
 ## 1. Purpose and scope
 
-This document decides how Hitchpost is split into parts that own their own data and logic, how those parts talk, and how many deployable services they become. It covers the booking network being built now (Phases 2 to 6) and the agent-to-agent social network that follows it (round 4 direction: identity, relationships, access policy, profiles, an MCP gateway and paid subscriptions).
+This document decides how Hitchpost is split into parts that own their own data and logic, how those parts talk, and how many deployable services they become. It covers the booking network being built now (Phases 2 to 6) and the agent-to-agent social network that follows it (network stages L1 to L4: identity, relationships, access policy, profiles, an MCP gateway and paid subscriptions).
 
 The decision is recorded in [ADR 0019](../decisions/0019-service-architecture.md). Container and deployment views are in [10 Architecture](10-architecture.md); component and deployment UML in [21 UML models](21-uml-models.md); per-store data in [22 EERD](22-enhanced-entity-relationship-model.md); the backend module design in [28 Software design description](28-software-design-description.md).
 
-Status labels follow [00 Document control](00-document-control.md): **Built**, **Phase N**, **Later**. Contexts introduced by the round 4 direction are labelled **Later (round 4)** until the phase map assigns them a phase.
+Status labels follow [00 Document control](00-document-control.md): **Built**, **Phase N**, **Later**. Contexts for the agent-to-agent network carry their stage from the phase map in [00](00-document-control.md): L1 agent family, L2 profiles, directory, relationships and access scopes, L3 full MCP gateway and consultation, L4 paid subscriptions (Later, unpriced, only if adoption warrants it). The exception is the **minimal MCP gateway**: a Phase 3 slice and a v1 Must (find an agent line, read its card and profile, ask for availability, approve only through an explicit human confirmation).
 
 ## 2. Bounded contexts
 
@@ -31,13 +31,13 @@ A bounded context is a part of the system with one consistent model and one owne
 | Notification               | Reminders, push subscriptions, delivery attempts, consent for SMS and email                                                                                              | reminder, subscription, delivery              | Phase 4                                                                                                     |
 | Operations and moderation  | Reports, takedowns, pauses, the moderation trail, incident switches                                                                                                      | report, takedown, pause                       | Phase 2 (operator-relayed cancel, pause); Phase 5 (moderation)                                              |
 | Analytics                  | Pseudonymous events, metric definitions, weekly snapshots                                                                                                                | event, personKey, snapshot                    | Phase 4                                                                                                     |
-| Relationship graph         | Follow, friend and subscriber edges between agent lines and owners; requests and blocks                                                                                  | follower, friend, subscriber, request, block  | Later (round 4)                                                                                             |
-| Access policy              | Sharing preferences per tier, scopes, auto-rules, the activity log of who asked what                                                                                     | tier, scope, sharing preference, activity log | Later (round 4)                                                                                             |
-| Profiles                   | Owner profiles and agent profiles: purpose, domains, workflows, skills offered                                                                                           | profile, domain, skill                        | Later (round 4)                                                                                             |
-| Payments and subscriptions | Paid subscriptions to consult an agent line, payouts, refunds, cancellations                                                                                             | subscription, payout, refund, platform fee    | Later (round 4)                                                                                             |
-| MCP gateway                | The MCP server people's own assistants (Claude, ChatGPT, Gemini) connect to: tools to find agents, view profiles, request access, message agents, list contacts, approve | tool, session, connected assistant            | Later (round 4)                                                                                             |
+| Relationship graph         | Follow, friend and subscriber edges between agent lines and owners; requests and blocks                                                                                  | follower, friend, subscriber, request, block  | L2                                                                                                          |
+| Access policy              | Sharing preferences per tier, scopes, auto-rules, the activity log of who asked what                                                                                     | tier, scope, sharing preference, activity log | L2                                                                                                          |
+| Profiles                   | Owner profiles and agent profiles: purpose, domains, workflows, skills offered                                                                                           | profile, domain, skill                        | L2                                                                                                          |
+| Payments and subscriptions | L4, Later, unpriced: paid subscriptions to consult an agent line, only if adoption warrants it                                                                           | subscription, payout, refund, platform fee    | L4 (unpriced)                                                                                               |
+| MCP gateway                | The MCP server people's own assistants (Claude, ChatGPT, Gemini) connect to: tools to find agents, view profiles, request access, message agents, list contacts, approve | tool, session, connected assistant            | Phase 3 minimal; L3 full                                                                                    |
 
-**Why Approval is its own context and not part of Booking.** The approval gate (ADR 0007) is the trust floor for every commitment, not only bookings. Round 4 adds paid subscriptions and sharing personal knowledge beyond scope, which need the same gate. Keeping it separate means one place enforces "no commitment without a yes".
+**Why Approval is its own context and not part of Booking.** The approval gate (ADR 0007) is the trust floor for every commitment, not only bookings. The network stages add paid subscriptions (L4, Later, unpriced) and sharing personal knowledge beyond scope, which need the same gate. Keeping it separate means one place enforces "no commitment without a yes".
 
 **Why Access policy is separate from Relationship graph.** The graph records who is connected and how; the policy decides what a caller at a given tier may see or ask. They change for different reasons (a friend request versus a privacy setting) and the policy must be checkable on every request without loading the whole graph.
 
@@ -60,12 +60,12 @@ flowchart LR
     AN["Analytics"]
   end
 
-  subgraph R4["Later (round 4)"]
+  subgraph R4["Later: network stages L1 to L4"]
     RG["Relationship graph"]
     POL["Access policy"]
     PRO["Profiles"]
-    PAY["Payments and subscriptions"]
-    MCP["MCP gateway"]
+    PAY["Payments and subscriptions (L4, unpriced)"]
+    MCP["MCP gateway (minimal slice Phase 3; full L3)"]
   end
 
   ID -- "Conformist" --> A2A
@@ -116,11 +116,11 @@ One row per context. "Owner" is the person accountable; today every row is me, a
 | Notification               | Deliver reminders and push messages with consent                                     | push_subscription, reminder, delivery       | In-process `schedule()`; Web Push                                                          | delivery_failed                                                         | Reminder sent within 5 min of due time                                                             | Me    |
 | Operations and moderation  | Reports, takedowns, pause switches, operator-relayed cancel                          | report, moderation_action, pause            | Operator console; one-command pause                                                        | listing_taken_down, pause_engaged                                       | Report acknowledged within the review promise in [36](36-customer-support-and-success-playbook.md) | Me    |
 | Analytics                  | Pseudonymous events, metric SQL, weekly snapshots                                    | event, snapshot                             | Read-only SQL views                                                                        | none                                                                    | Weekly snapshot by Monday                                                                          | Me    |
-| Relationship graph         | Follow, friend, subscriber edges, requests, blocks                                   | edge, request, block                        | MCP and App API tools                                                                      | relationship_changed                                                    | Later (round 4)                                                                                    | Me    |
+| Relationship graph         | Follow, friend, subscriber edges, requests, blocks                                   | edge, request, block                        | MCP and App API tools                                                                      | relationship_changed                                                    | L2                                                                                                 | Me    |
 | Access policy              | Evaluate tier and scope per call; filter extended agent cards; activity log          | sharing_preference, scope, activity_log     | In-process `authorize(caller, scope)`                                                      | access_denied, access_granted                                           | Policy check under 20 ms p95                                                                       | Me    |
-| Profiles                   | Owner and agent profiles                                                             | profile                                     | REST and MCP read                                                                          | profile_updated                                                         | Later (round 4)                                                                                    | Me    |
+| Profiles                   | Owner and agent profiles                                                             | profile                                     | REST and MCP read                                                                          | profile_updated                                                         | L2                                                                                                 | Me    |
 | Payments and subscriptions | Paid consultation subscriptions, payouts, refunds, cancellation                      | subscription, payout, refund                | Payments provider webhooks; App API                                                        | subscription_started, subscription_cancelled                            | Cancellation effective immediately (FTC negative option rule)                                      | Me    |
-| MCP gateway                | MCP server for people's assistants                                                   | mcp_session                                 | MCP tools: find agent, view profile, request access, message agent, list contacts, approve | none                                                                    | Later (round 4)                                                                                    | Me    |
+| MCP gateway                | MCP server for people's assistants                                                   | mcp_session                                 | MCP tools: find agent, view profile, request access, message agent, list contacts, approve | none                                                                    | Phase 3 minimal; L3 full                                                                           | Me    |
 
 ## 5. Decision: microservices or modular monolith
 
@@ -128,7 +128,7 @@ The question is how many deployable services these contexts become now, with one
 
 ### 5.1 Options
 
-- **A. Microservices per context.** Eight services now, thirteen with round 4.
+- **A. Microservices per context.** Eight services now, thirteen with the network stages (L1 to L4).
 - **B. One modular monolith.** Every context, including every agent line, in one process.
 - **C. Modular monolith with separate agent hosts.** Three deployables: the agent host for business agent lines, the app backend for personal agent lines and the App API, and the platform service for the rest. Each internally split by context.
 
@@ -158,16 +158,16 @@ I chose **C**. It keeps the running cost and on-call load near a monolith, which
 
 A context becomes its own service when any trigger fires. Until then it stays a module.
 
-| Context                                        | Extraction trigger                                                                                                                         |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Booking (agent host)                           | Already separate. Split a single business agent line into its own process when it exceeds 10% of host CPU or needs its own deploy cadence. |
-| Directory                                      | Read traffic exceeds the platform process budget, or a partner needs a public search SLA above 99.5%.                                      |
-| Reputation                                     | Recompute jobs exceed 10 minutes or interfere with directory latency.                                                                      |
-| Notification                                   | Delivery volume needs its own queue and retry workers (likely when SMS consent arrives).                                                   |
-| Analytics                                      | Moves to its own read store as soon as queries touch more than a week of events.                                                           |
-| MCP gateway (round 4)                          | Extracted from the start of round 4: it faces many third-party assistants, has bursty traffic and its own auth model.                      |
-| Payments and subscriptions (round 4)           | Extracted from the start: compliance scope (payments provider, KYC, 1099-K reporting) should not include the rest of the platform.         |
-| Relationship graph and Access policy (round 4) | Stay together as one module until graph queries exceed the policy latency target.                                                          |
+| Context                                          | Extraction trigger                                                                                                                                                     |
+| ------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Booking (agent host)                             | Already separate. Split a single business agent line into its own process when it exceeds 10% of host CPU or needs its own deploy cadence.                             |
+| Directory                                        | Read traffic exceeds the platform process budget, or a partner needs a public search SLA above 99.5%.                                                                  |
+| Reputation                                       | Recompute jobs exceed 10 minutes or interfere with directory latency.                                                                                                  |
+| Notification                                     | Delivery volume needs its own queue and retry workers (likely when SMS consent arrives).                                                                               |
+| Analytics                                        | Moves to its own read store as soon as queries touch more than a week of events.                                                                                       |
+| MCP gateway (minimal Phase 3; full L3)           | The minimal slice runs as its own service from Phase 3: it faces many third-party assistants, has bursty traffic and its own auth model.                               |
+| Payments and subscriptions (L4, Later, unpriced) | If it is ever built (L4, unpriced), extracted from the start: compliance scope (payments provider, KYC, 1099-K reporting) should not include the rest of the platform. |
+| Relationship graph and Access policy (L2)        | Stay together as one module until graph queries exceed the policy latency target.                                                                                      |
 
 ## 6. Communication between contexts
 
@@ -178,7 +178,7 @@ A context becomes its own service when any trigger fires. Until then it stays a 
 | Agent to agent (A2A)                           | Synchronous request and reply for questions; Task for commitments      | ADR 0012. A question needs an answer now; a commitment needs a durable id. |
 | Booking asks Approval                          | Synchronous, in process                                                | A commitment must not proceed until the decision is recorded.              |
 | Booking to Reputation, Notification, Analytics | Asynchronous events through the outbox                                 | Booking must not slow down or fail because a consumer is down.             |
-| Access policy check (round 4)                  | Synchronous, in process, cached per caller                             | Every consultation call is checked; latency matters.                       |
+| Access policy check (L2)                       | Synchronous, in process, cached per caller                             | Every consultation call is checked; latency matters.                       |
 | Platform to agent host                         | Synchronous REST for operator actions (pause, operator-relayed cancel) | Operator actions need immediate confirmation.                              |
 
 ### 6.2 Transactional outbox
@@ -215,24 +215,24 @@ I chose schema per context over database per service: it gives the ownership bou
 
 ## 8. Deployment units and failure isolation
 
-| Unit                  | Contains                                                    | If it fails                                                                                                                            |
-| --------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| Agent host            | Business agent lines (one A2A handler and data scope each)  | Bookings for the lines on that host stop; directory, app and other hosts keep working. Agents show the business phone as the fallback. |
-| App backend           | Personal agent lines, App API, Notification                 | People can't start new requests or receive reminders; businesses keep their books; confirmed bookings are unaffected.                  |
-| Platform service      | Directory, Reputation, Operations and moderation, Analytics | Search and ratings pause; agents already in contacts keep working because agent-to-agent calls don't pass through the platform.        |
-| MCP gateway (round 4) | MCP server                                                  | People's assistants can't reach Hitchpost; the app and direct A2A keep working.                                                        |
-| Payments (round 4)    | Subscriptions and payouts                                   | New subscriptions pause; existing access continues until the period ends.                                                              |
+| Unit                                   | Contains                                                    | If it fails                                                                                                                            |
+| -------------------------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Agent host                             | Business agent lines (one A2A handler and data scope each)  | Bookings for the lines on that host stop; directory, app and other hosts keep working. Agents show the business phone as the fallback. |
+| App backend                            | Personal agent lines, App API, Notification                 | People can't start new requests or receive reminders; businesses keep their books; confirmed bookings are unaffected.                  |
+| Platform service                       | Directory, Reputation, Operations and moderation, Analytics | Search and ratings pause; agents already in contacts keep working because agent-to-agent calls don't pass through the platform.        |
+| MCP gateway (minimal Phase 3; full L3) | MCP server                                                  | People's assistants can't reach Hitchpost; the app and direct A2A keep working.                                                        |
+| Payments (L4, Later, unpriced)         | Subscriptions and payouts                                   | New subscriptions pause; existing access continues until the period ends.                                                              |
 
 The one-command pause and the auto-pause on an unacknowledged SEV1 live in Operations and moderation and act on every agent host ([18 Deployment and operations](18-deployment-and-operations.md), [19 Maintenance and evolution](19-maintenance-and-evolution.md)).
 
-## 9. Round 4 implications
+## 9. Network stage implications (L1 to L4)
 
-The round 4 direction turns Hitchpost into the identity, relationship, policy and directory layer for agents of any vendor, plus a relay. It changes this architecture in four ways.
+The network direction turns Hitchpost into the identity, relationship, policy and directory layer for agents of any vendor, plus a relay. It changes this architecture in four ways.
 
 1. **Identity moves earlier.** Relationship tiers need authenticated callers. Agent authentication and signing, currently Phase 6, must land in the phase that introduces relationships. Agent family membership (all lines owned by one owner trust each other at the owner tier) lives in Agent line and identity.
-2. **Cards become caller-specific.** The public agent card stays public; an authenticated caller gets an A2A extended agent card filtered by Access policy for its tier (owner, friend, subscriber, follower, public). The card is computed per call, never cached across callers.
-3. **Two contexts start as separate services.** The MCP gateway (third-party assistants, bursty, its own auth) and Payments (compliance scope) are extracted from the start (section 5.4).
-4. **Answers are information, commitments still pass the gate.** A consultation reply never commits the owner. Paid subscriptions and sharing beyond scope go through Approval, which is why Approval stays its own context.
+2. **Cards become caller-specific.** The public agent card stays public; an authenticated caller gets an A2A extended agent card filtered by Access policy for its `RelationshipTier`: owner (the owner's own agent family), friend (mutual), subscriber (Later, unpriced), follower (one-way), public. `blocked` is an edge state, not a tier. The card is computed per call, never cached across callers.
+3. **Two contexts start as separate services.** The MCP gateway (third-party assistants, bursty, its own auth) runs separately from its minimal Phase 3 slice; Payments (compliance scope) would be extracted from the start if L4 is ever built, unpriced (section 5.4).
+4. **Answers are information, commitments still pass the gate.** A consultation reply never commits the owner. Paid subscriptions (L4, unpriced, if ever) and sharing beyond scope go through Approval, which is why Approval stays its own context.
 
 ## 10. Traceability
 
@@ -248,6 +248,7 @@ The round 4 direction turns Hitchpost into the identity, relationship, policy an
 
 ## Revision history
 
-| Version | Date       | Change                                                                                                  | Author      |
-| ------- | ---------- | ------------------------------------------------------------------------------------------------------- | ----------- |
-| 1.0     | 2026-11-09 | First baseline, including the round 4 contexts (relationships, policy, profiles, payments, MCP gateway) | S. Jannisar |
+| Version | Date       | Change                                                                                                        | Author      |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------- | ----------- |
+| 1.0     | 2026-11-09 | First baseline, including the round 4 contexts (relationships, policy, profiles, payments, MCP gateway)       | S. Jannisar |
+| 1.1     | 2026-11-09 | Round 5: protocol first (no pricing), minimal MCP gateway in v1, final QA fixes, frozen for the Phase 2 spike | S. Jannisar |

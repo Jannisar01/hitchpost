@@ -3,8 +3,8 @@
 | Field       | Value                                                                                                                 |
 | ----------- | --------------------------------------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-07                                                                                                             |
-| Version     | 1.3                                                                                                                   |
-| Status      | Baselined for Phase 2                                                                                                 |
+| Version     | 1.5                                                                                                                   |
+| Status      | Frozen for Phase 2 spike                                                                                              |
 | Date        | 2026-11-09                                                                                                            |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                                      |
 | Conforms to | ISO/IEC/IEEE 29148 (requirements analysis models), structured analysis (Yourdon/DeMarco DFDs), UML 2.5 state machines |
@@ -273,24 +273,25 @@ P4.4 rechecks the slot and writes the booking in one transaction, so two request
 | BR-19 | Authority comes from server-minted secrets, not from `contextId`, which the client chooses (`server/index.js:2815`): `offerId` authorises `booking_request` and `offer_declined` for that offer; `bookingToken` authorises `cancel_request` and `reschedule_request` for that booking. Until agent authentication (Phase 6) both are bearer capabilities: logged as hashes, never shown or put in a URL.                                                                                                       | FR-MSG-12, NFR-SEC-01              | Offer store, booking handler                                                    | Phase 2                                                  |
 | BR-20 | The offer is the earliest slot that fits the request, never a slot the business prefers.                                                                                                                                                                                                                                                                                                                                                                                                                       | FR-BOOK-16                         | `findFreeSlot` returns the first free slot in time order                        | Built                                                    |
 | BR-21 | A resent `availability_request` with the same `messageId` from the same sender returns the original reply and creates no new hold.                                                                                                                                                                                                                                                                                                                                                                             | FR-MSG-13                          | Offer store (`sender`, `messageId` key)                                         | Phase 2                                                  |
-| BR-22 | An outcome resolves by rule: the business marks Completed or NoShow; the customer answers "Did it go as booked?"; if they disagree the booking is Disputed until the operator resolves it; with no mark after P-25 it is Unresolved. Only Completed counts toward the north star; outcomes are never billed.                                                                                                                                                                                                   | FR-RATE-04, FR-RATE-05, FR-RATE-06 | Outcome recorder                                                                | Phase 4 (marks, Unresolved), Phase 5 (answers, Disputed) |
+| BR-22 | An outcome resolves by rule. After the appointment time the booking is AwaitingOutcome until both the business mark and the customer answer ("Did it go as booked?") arrive or P-25 passes. Both agree: Completed or NoShow. They disagree: Disputed until the operator resolves it. Only the business marked by P-25: the mark stands. Only the customer answered by P-25, or neither: Unresolved, which is final. Only Completed counts toward the north star.                                               | FR-RATE-04, FR-RATE-05, FR-RATE-06 | Outcome recorder                                                                | Phase 4 (marks, Unresolved), Phase 5 (answers, Disputed) |
 | BR-23 | A request of an unknown `kind` is answered `rejected` reason `unsupported_kind`; an unknown reply kind is reported to the person as an unsupported reply and books nothing.                                                                                                                                                                                                                                                                                                                                    | FR-MSG-14                          | `parse*` functions, `askForSlot`                                                | Phase 2                                                  |
 | BR-24 | A business agent refuses `ListTasks` for every caller and `CancelTask` on booking and cancel Tasks, and never writes a `bookingToken` into Task history (the token is an HMAC of the `bookingId`). Proposed; confirmed by the Phase 2 spike (O-1).                                                                                                                                                                                                                                                             | FR-MSG-18                          | Request handler method policy                                                   | Phase 2 (pending spike)                                  |
 | BR-25 | The customer block (display name, verified phone, optional note) is attached only after the person approves, sent only to the business named on the offer, and shown only to that business.                                                                                                                                                                                                                                                                                                                    | FR-BOOK-14, NFR-PRIV-01            | Approval gate, booking handler                                                  | Phase 2                                                  |
 | BR-26 | A paused listing answers new availability requests with `rejected` reason `paused` and new booking requests with `booking_rejected` reason `paused`, shows its business phone, and keeps its confirmed bookings.                                                                                                                                                                                                                                                                                               | FR-ADMIN-03                        | Business agent, directory                                                       | Phase 2                                                  |
+| BR-27 | A business holds at most P-31 concurrent open offers, whoever the senders are; beyond it every new availability request gets `rejected` reason `hold_cap` and no hold. This backs up BR-17, whose sender key (install key) is chosen by the client and can be rotated.                                                                                                                                                                                                                                         | FR-BOOK-18                         | Offer store                                                                     | Phase 2                                                  |
 
 ## 7. Decision tables
 
 Each table is complete: every combination of conditions maps to exactly one action. A dash means "any value". Rules are evaluated left to right; the first column that matches wins.
 
-### 7.1 Can this slot be offered? (BR-01, BR-02, BR-17, BR-20, BR-21, BR-26)
+### 7.1 Can this slot be offered? (BR-01, BR-02, BR-17, BR-20, BR-21, BR-26, BR-27)
 
 | Rule                                                   | 1                         | 2                     | 3                              | 4                       | 5             | 6             | 7             | 8             | 9                   |
 | ------------------------------------------------------ | ------------------------- | --------------------- | ------------------------------ | ----------------------- | ------------- | ------------- | ------------- | ------------- | ------------------- |
 | Same sender and `messageId` already answered (Phase 2) | Y                         | N                     | N                              | N                       | N             | N             | N             | N             | N                   |
 | Listing paused (Phase 2)                               | -                         | Y                     | N                              | N                       | N             | N             | N             | N             | N                   |
 | Service exists in the book                             | -                         | -                     | N                              | Y                       | Y             | Y             | Y             | Y             | Y                   |
-| Sender under the hold cap (P-07)                       | -                         | -                     | -                              | N                       | Y             | Y             | Y             | Y             | Y                   |
+| Sender under P-07 and business under P-31 open holds   | -                         | -                     | -                              | N                       | Y             | Y             | Y             | Y             | Y                   |
 | Start is in the window and not before now              | -                         | -                     | -                              | -                       | N             | Y             | Y             | Y             | Y                   |
 | Business open that day, service fits before close      | -                         | -                     | -                              | -                       | -             | N             | Y             | Y             | Y                   |
 | Overlaps a booking or a Held offer                     | -                         | -                     | -                              | -                       | -             | -             | Y             | N             | N                   |
@@ -328,15 +329,17 @@ Rule 1 covers a missing `A2A-Extensions` header too: the SDK refuses the send wi
 
 ### 7.4 Resolve a booking's outcome (BR-22; Phase 4 and 5)
 
-| Rule                                  | 1          | 2                          | 3                    | 4                 | 5                          |
-| ------------------------------------- | ---------- | -------------------------- | -------------------- | ----------------- | -------------------------- |
-| Business marked an outcome            | N          | N                          | Y                    | Y                 | Y                          |
-| Customer answered                     | -          | -                          | N                    | Y                 | Y                          |
-| P-25 has passed since the appointment | Y          | N                          | -                    | -                 | -                          |
-| Mark and answer agree                 | -          | -                          | -                    | Y                 | N                          |
-| **Action**                            | Unresolved | Wait for the business mark | Business mark stands | Outcome as marked | Disputed (operator review) |
+Evaluated while the booking is AwaitingOutcome, and once more when P-25 passes.
 
-A customer answer alone never sets Completed: a business that never marks has its bookings go Unresolved, and the unmarked rate is a counter-metric. Rule 1 applies only when no mark exists.
+| Rule                                  | 1                  | 2                    | 3                    | 4                    | 5                 | 6                          |
+| ------------------------------------- | ------------------ | -------------------- | -------------------- | -------------------- | ----------------- | -------------------------- |
+| Business marked an outcome            | N                  | N                    | Y                    | Y                    | Y                 | Y                          |
+| Customer answered                     | -                  | -                    | N                    | N                    | Y                 | Y                          |
+| P-25 has passed since the appointment | Y                  | N                    | N                    | Y                    | -                 | -                          |
+| Mark and answer agree                 | -                  | -                    | -                    | -                    | Y                 | N                          |
+| **Action**                            | Unresolved (final) | Stay AwaitingOutcome | Stay AwaitingOutcome | Business mark stands | Outcome as marked | Disputed (operator review) |
+
+A customer answer alone never sets Completed: a business that never marks has its bookings go Unresolved, and the unmarked rate is a counter-metric. Unresolved is final; a late business mark is logged but does not change it.
 
 ## 8. State machines
 
@@ -362,7 +365,7 @@ stateDiagram-v2
 
 Held offers block slots (BR-02). A Booked offer is kept as part of its booking's record until the booking is deleted (P-12). Today an offer exists only as a message; nothing is stored (Built as message, Phase 2 as state).
 
-### 8.2 Booking (Phase 2)
+### 8.2 Booking (Phase 2; outcomes Phase 4 and 5)
 
 A booking exists only once it has been written.
 
@@ -371,15 +374,13 @@ stateDiagram-v2
   [*] --> Confirmed: booking written
   Confirmed --> Cancelled: customer cancel outside cutoff, or business cancellation
   Confirmed --> Rescheduled: replacement booking confirmed in the same transaction
-  Confirmed --> Completed: business marks it done
-  Confirmed --> NoShow: business marks a no-show
-  Confirmed --> Unresolved: no mark after P-25
-  Completed --> Disputed: customer answer disagrees
-  NoShow --> Disputed: customer answer disagrees
+  Confirmed --> AwaitingOutcome: appointment time passed
+  AwaitingOutcome --> Completed: both say it happened, or only the business marked done by P-25
+  AwaitingOutcome --> NoShow: both say it did not, or only the business marked no-show by P-25
+  AwaitingOutcome --> Disputed: business mark and customer answer disagree
+  AwaitingOutcome --> Unresolved: P-25 passes without a business mark
   Disputed --> Completed: operator resolves
   Disputed --> NoShow: operator resolves
-  Unresolved --> Completed: late business mark
-  Unresolved --> NoShow: late business mark
   Completed --> [*]: row deleted after P-12
   NoShow --> [*]: row deleted after P-12
   Cancelled --> [*]: row deleted after P-12
@@ -387,7 +388,7 @@ stateDiagram-v2
   Unresolved --> [*]: row deleted after P-12
 ```
 
-Completed is what the north star counts as "honored" ([01](01-vision-and-scope.md)). Disputed and Unresolved bookings are excluded from the north star and from rating (BR-14, BR-22). A Cancelled booking records who cancelled (`customer` or `business`); a business cancellation always notifies the person (FR-BOOK-15).
+Completed is what the north star counts as "honored" ([01](01-vision-and-scope.md)). Disputed and Unresolved bookings are excluded from the north star and from rating (BR-14, BR-22); Unresolved is final. A Cancelled booking records who cancelled (`customer` or `business`); a business cancellation always notifies the person (FR-BOOK-15). The same machine is drawn in [21 UML models](21-uml-models.md) and stored as `BookingStatus` in [09](09-data-dictionary.md).
 
 ### 8.3 A2A booking Task (Phase 2, ADR 0012)
 
@@ -517,3 +518,4 @@ Manual approval by the business owner (Later) would add a branch between "Listin
 | 1.1     | 2026-11-09 | Remediation after independent review: balanced level 1 and level 2 DFDs, Reserved offer state, WORKING instead of input-required, recheck at write, idempotency, hold caps, context binding (BR-17 to BR-19), Booking NoShow and Completed, E-15, P-IDs                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | S. Jannisar |
 | 1.2     | 2026-11-09 | Second remediation after regrade: cancel, reschedule and outside-agent `offer_declined` flows in the DFDs (P4.6 added at level 2); BR-17 to BR-19 rebuilt on SDK behaviour (per-sender cap, `duplicateOf`, `offerId` and `bookingToken` capabilities); reschedule cutoff in BR-11 and decision table 7.2; `reservedUntil`; Paused listing transitions; Phase 5 attestation by matching audit hashes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | S. Jannisar |
 | 1.3     | 2026-11-09 | Round 3: expert panel audit, user-to-user reframing, US jurisdiction: scope as a network of agent lines including person to person (UC-11); standing approval only in the pilot, manual approval (P4.3, Reserved, rules 9 to 12, E-05, E-08) marked Later; DFDs balanced against the new scope (O-9): outcome marks and answers, P8 accounts and contacts with DS8 and DS9, export and deletion, reminders, business cancellation and operator relay, pause all; state models completed (O-5): Held exits for `slot_taken`, `cutoff`, paused listing and rollback, Confirmed exits to Unresolved, Disputed state, CANCELED task, deletion no longer a state; BR-20 to BR-26 (slot selection duty, availability de-duplication, outcome resolution, unknown kinds, method policy, customer block, paused listing); decision table 7.1 with de-duplication, pause and `unknown_service`, 7.2 with pause and concurrent duplicates, new 7.4 outcome resolution; events E-16 to E-20 | S. Jannisar |
+| 1.5     | 2026-11-09 | Round 5: protocol first (no pricing), minimal MCP gateway in v1, final QA fixes, frozen for the Phase 2 spike                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | S. Jannisar |

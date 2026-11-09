@@ -3,8 +3,8 @@
 | Field       | Value                                                                            |
 | ----------- | -------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-14                                                                        |
-| Version     | 1.3                                                                              |
-| Status      | Baselined for Phase 2                                                            |
+| Version     | 1.5                                                                              |
+| Status      | Frozen for Phase 2 spike                                                         |
 | Date        | 2026-11-09                                                                       |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                 |
 | Conforms to | IEEE 1016 (interface viewpoint), ISO 9241-110 (dialogue principles), WCAG 2.2 AA |
@@ -101,8 +101,8 @@ Low fidelity, mobile first, 360 px wide. `[ ]` is a button, `( )` a toggle, `>` 
 | < Main Street Barbers  ✓ 4.8   [...] |
 |   mainstreetbarbers.example          |
 +--------------------------------------+
-|                 You: Haircut Thursday|
-|                      after 5 pm      |
+|      You: Haircut · Thu 12 Nov ·     |
+|           5 pm to 7 pm               |
 |                                      |
 | +----------------------------------+ |
 | | OFFER                            | |
@@ -114,9 +114,11 @@ Low fidelity, mobile first, 360 px wide. `[ ]` is a button, `( )` a toggle, `>` 
 | +----------------------------------+ |
 |                                      |
 +--------------------------------------+
-| [ Ask for a time...            ][>] |
+| [Service v] [Day v] [From-To v]  [>] |
 +--------------------------------------+
 ```
+
+Requests are built with structured pickers (service, day, time window). Free text is not parsed before the language-model stage: Hitchpost agents are rule-based software until a language model is added (the language-model stage); we don't call them AI before then.
 
 ### 4.3 Offer card states
 
@@ -161,6 +163,8 @@ Valid              Expired                    Refused by my agent
 ```
 
 Approve is the primary button on the right, following the platform convention for a horizontal pair, and it is never pre-focused: focus lands on the sheet title. The protection against a reflexive tap is the review step itself (the sheet opens from a card, Approve is not where the card's own button was, and nothing is pre-focused), not button placement. Both buttons meet the size rule in section 7. The "Cancel" row is the business's cancellation cutoff (P-10) or "Free to cancel any time" when it has none; the "Shared" row states the customer block before it is sent (FR-BOOK-14).
+
+**From your own assistant (UC-12, Phase 3).** When a person approves through the MCP gateway, the assistant shows a deep link that opens this same sheet (or presents the gateway's one-time confirmation with the same fields). The assistant's tool call alone never books (FR-GATE-06).
 
 For a business on manual approval (Later), the primary button reads **Request booking** and the footer reads "The shop confirms within 30 minutes. Nothing is booked until they do." In the pilot every business is on standing approval, so Approve books at once.
 
@@ -264,7 +268,7 @@ Legend: `███` booked, `▒▒▒` held by an open offer (P-01), `░░░
 - **Customer block.** Each booking shows the customer's display name, verified phone and optional note (FR-BOOK-14). Nothing else about the customer is shared.
 - **Refresh and alerts.** The dashboard keeps a live event stream open; a new booking adds a row at the top with a short sound (off by default, switchable), a badge on the tab, and a polite live-region announcement. If the stream drops, it falls back to refreshing every 30 seconds and shows "Reconnecting". Nothing on this screen needs an answer within a time limit under standing approval.
 - **Cancel** opens a confirm step with a required reason; the customer is notified (pilot: through the operator relay; Phase 4: a `booking_cancelled_by_business` notice) and both audit logs record it (FR-BOOK-15).
-- **Outcomes:** each past booking is marked Completed or No-show here. Marking is never billed, so there is nothing to gain from leaving it blank. A booking still unmarked after P-25 becomes Unresolved; if the customer's "Did it go as booked?" answer disagrees with the mark, the booking is Disputed and goes to Sam. Completed bookings are what the north star counts ([01](01-vision-and-scope.md)); Disputed and Unresolved count as neither (FR-RATE-06).
+- **Outcomes:** each past booking is marked Completed or No-show here. After the appointment the booking waits for both the mark and the customer's "Did it go as booked?" answer, until P-25 (BR-22). If they disagree, the booking is Disputed and goes to Sam; a mark alone stands at P-25; with no mark it becomes Unresolved, which is final. Completed bookings are what the north star counts ([01](01-vision-and-scope.md)); Disputed and Unresolved count as neither (FR-RATE-06).
 - **Later: manual approval queue.** With manual approval a "Waiting for you" list would show Accept and Decline per request, with an absolute "answer by 6:02 pm" time (P-03), a sound and a push notification; it is not part of the pilot.
 
 ### 4.10 Report flow (UC-09, FR-ADMIN-01)
@@ -447,3 +451,4 @@ Also recorded: System Usability Scale (target 80 or more), every point where a p
 | 1.0     | 2026-11-09 | First baseline                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | S. Jannisar |
 | 1.1     | 2026-11-09 | Remediation after independent review: principles renamed UP-1 to UP-7 and usability tasks UT-1 to UT-10 to avoid ID collisions; barber dashboard placed in Phase 4 with outcome marking (Completed, No-show) and reserved state; Decline sends `offer_declined`; waiting-on-shop uses a WORKING Task with polling, plus shop-declined and shop-timeout states and strings; timings cite P-01, P-03, P-04, P-09                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | S. Jannisar |
 | 1.3     | 2026-11-09 | Round 3: expert panel audit, user-to-user reframing, US jurisdiction: scope covers people and businesses as contacts, business dashboard, directory web, notifications and email; standing approval only in the pilot (manual queue, "Request booking" label and waiting states marked Later); approval sheet adds legal name, phone, total with tax statement, cancellation row and shared-data row; absolute "held until" times instead of countdowns; business-local time first; button-placement rationale corrected; Checking state for unknown outcomes; dashboard shows the customer block, live refresh and alert model, business cancellation, unbilled outcome marking with Unresolved and Disputed; report block box unticked; new person-to-person time agreement (UC-11) and reminders with TCPA consent; repeat booking and "This booking went wrong"; accessibility applies to every surface with an AT test matrix and 2.2.1 rationale fixed; usability tasks UT-2 and UT-7 to UT-9 rewritten, UT-11 to UT-13 added | S. Jannisar |
+| 1.5     | 2026-11-09 | Round 5: protocol first (no pricing), minimal MCP gateway in v1, final QA fixes, frozen for the Phase 2 spike                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | S. Jannisar |

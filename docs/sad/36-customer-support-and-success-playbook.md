@@ -3,8 +3,8 @@
 | Field       | Value                                                                                             |
 | ----------- | ------------------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-36                                                                                         |
-| Version     | 1.0                                                                                               |
-| Status      | Baselined for Phase 2                                                                             |
+| Version     | 1.1                                                                                               |
+| Status      | Frozen for Phase 2 spike                                                                          |
 | Date        | 2026-11-09                                                                                        |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                  |
 | Conforms to | ITIL 4 practices: service desk, incident management, problem management, service level management |
@@ -79,7 +79,7 @@ flowchart TD
     B -- yes --> S1[SEV1: respond per P-17]
     B -- no --> C{Is a booking blocked or a business unreachable?}
     C -- yes --> S2[SEV2]
-    C -- no --> S3[SEV3: next release or 5 working days]
+    C -- no --> S3[SEV3: next release, per P-17]
     S1 --> D{Acknowledged within 30 min? P-28}
     D -- no --> P[Auto-pause all listings, phone fallback shown]
     D -- yes --> E{Is the cause in Hitchpost code or data?}
@@ -146,7 +146,7 @@ At-risk businesses get a call within a week; at-risk people get one short messag
 | 5   | What does the business see about me?         | Your display name, your phone number and any note you add, and only for that booking.                                       |
 | 6   | Is this AI?                                  | Agents follow fixed rules today; no language model makes booking decisions. We'll say clearly if that changes.              |
 | 7   | What does it cost me?                        | Nothing. People are free.                                                                                                   |
-| 8   | What does it cost my business?               | Free during the pilot; afterwards a flat monthly price per verified business agent line (P-26). No per-booking fees.        |
+| 8   | What does it cost my business?               | Nothing. Hitchpost is an open protocol with a free reference implementation; nobody pays, now or for the pilot.             |
 | 9   | Do I have to change my booking app?          | No. Hitchpost sits in front of the tool you already use.                                                                    |
 | 10  | What if Hitchpost goes down?                 | Your existing bookings stay in your own tool, and people see your phone number as the fallback.                             |
 | 11  | Why was my offer gone when I tapped Approve? | Offers are held for a short time so others can book too. Ask again and your agent will find the next free time.             |
@@ -183,6 +183,7 @@ The backup operator (DP-04) covers when I'm unavailable. Before the pilot starts
 
 ## Revision history
 
-| Version | Date       | Change                                                                                              | Author      |
-| ------- | ---------- | --------------------------------------------------------------------------------------------------- | ----------- |
-| 1.0     | 2026-11-09 | First baseline: support model, failure taxonomy with templates, escalation, onboarding, health, FAQ | S. Jannisar |
+| Version | Date       | Change                                                                                                        | Author      |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------- | ----------- |
+| 1.0     | 2026-11-09 | First baseline: support model, failure taxonomy with templates, escalation, onboarding, health, FAQ           | S. Jannisar |
+| 1.1     | 2026-11-09 | Round 5: protocol first (no pricing), minimal MCP gateway in v1, final QA fixes, frozen for the Phase 2 spike | S. Jannisar |

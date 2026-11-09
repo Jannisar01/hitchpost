@@ -3,8 +3,8 @@
 | Field       | Value                                                                                                  |
 | ----------- | ------------------------------------------------------------------------------------------------------ |
 | Document ID | HP-SAD-21                                                                                              |
-| Version     | 1.1                                                                                                    |
-| Status      | Baselined for Phase 2                                                                                  |
+| Version     | 1.2                                                                                                    |
+| Status      | Frozen for Phase 2 spike                                                                               |
 | Date        | 2026-11-09                                                                                             |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                       |
 | Conforms to | UML 2.5.1 (OMG), ISO/IEC 19505; drawn in Mermaid 11.4, whose notation limits are listed in section 1.2 |
@@ -1264,7 +1264,7 @@ sequenceDiagram
 
 ### 7.11 Outcome resolution (UC-08, Phases 4 and 5)
 
-Rationale: outcomes feed the north star and ratings but are never billed, and the business and the customer may disagree. Reading notes: the business marks first (Phase 4); the customer's answer (Phase 5) either confirms or disputes; silence past P-25 makes the booking unresolved.
+Rationale: outcomes feed the north star and ratings, and the business and the customer may disagree. Reading notes: the business marks first (Phase 4); the customer's answer (Phase 5) either confirms or disputes; silence past P-25 makes the booking unresolved.
 
 ```mermaid
 sequenceDiagram
@@ -1286,6 +1286,41 @@ sequenceDiagram
   end
   Clock->>BA: P-25 passed with no mark
   BA->>BA: status unresolved (excluded from the north star)
+```
+
+### 7.12 Your own assistant books through the minimal MCP gateway (UC-12, Phase 3)
+
+Rationale: this is the v1 demand channel: people reach business agent lines from the assistant they already use. Reading notes: the gateway acts as the person's agent and applies the same validation; `approve_offer` only returns a confirmation step, and nothing is sent until the person confirms (FR-GATE-06).
+
+```mermaid
+sequenceDiagram
+  actor Jordan
+  participant AS as Jordan's assistant (MCP client)
+  participant GW as Hitchpost MCP gateway
+  participant DIR as Directory
+  participant BA as Business agent
+  Jordan->>AS: book a haircut near me
+  AS->>GW: find_agent_line(service, area)
+  GW->>DIR: search verified listings
+  DIR-->>GW: listings with card URLs
+  GW-->>AS: agent lines and profiles
+  AS->>GW: request_availability(agentLineId, serviceId, window)
+  GW->>BA: availability_request (A2A, origin pinned)
+  BA-->>GW: offer
+  GW->>GW: validate and match the request (P-09 deadline)
+  GW-->>AS: offer fields
+  AS->>GW: approve_offer(offerId)
+  GW-->>AS: confirmation step (deep link or one-time confirmation)
+  AS-->>Jordan: shows the validated offer
+  alt Jordan confirms
+    Jordan->>GW: confirm
+    GW->>BA: booking_request {offerId, customer}
+    BA-->>GW: Task COMPLETED {booking_confirmed}
+    GW->>GW: confirmation equals offer field for field
+    GW-->>AS: booked
+  else no confirmation before the hold ends
+    GW-->>AS: offer expired, nothing booked
+  end
 ```
 
 ## 8. State machines
@@ -1372,7 +1407,7 @@ stateDiagram-v2
 
 ### 8.4 Booking outcome resolution
 
-Rationale: the north star counts honored bookings, so the path from confirmed to an outcome must be explicit and must never depend on who pays. Reading notes: `rescheduled` and `cancelled` are final for this booking (a reschedule creates a new booking); hard deletion by the P-12 retention job is not a state.
+Rationale: the north star counts honored bookings, so the path from confirmed to an outcome must be explicit. Reading notes: this is the same machine as [07 §8.2](07-process-and-behaviour-models.md#82-booking-phase-2-outcomes-phase-4-and-5) and decision table 07 §7.4; `AwaitingOutcome` lasts until both answers arrive or P-25 passes; Unresolved is final; hard deletion by the P-12 retention job is not a state.
 
 ```mermaid
 stateDiagram-v2
@@ -1380,20 +1415,10 @@ stateDiagram-v2
   Confirmed --> Cancelled: cancel_request or operator-relayed cancel
   Confirmed --> Rescheduled: atomic swap to a new booking
   Confirmed --> AwaitingOutcome: appointment time passed
-  state AwaitingOutcome {
-    [*] --> Unmarked
-    Unmarked --> BusinessMarked: business marks
-    Unmarked --> CustomerAnswered: customer answers
-    BusinessMarked --> Compare: customer answers
-    CustomerAnswered --> Compare: business marks
-  }
-  Compare --> Completed: both say it happened
-  Compare --> NoShow: both say it did not
-  Compare --> Disputed: answers disagree
-  BusinessMarked --> Completed: P-25 passes, business said completed
-  BusinessMarked --> NoShow: P-25 passes, business said no_show
-  Unmarked --> Unresolved: P-25 passes, no answer
-  CustomerAnswered --> Unresolved: P-25 passes, business never marked
+  AwaitingOutcome --> Completed: both say it happened, or only the business marked done by P-25
+  AwaitingOutcome --> NoShow: both say it did not, or only the business marked no-show by P-25
+  AwaitingOutcome --> Disputed: answers disagree
+  AwaitingOutcome --> Unresolved: P-25 passes without a business mark
   Disputed --> Completed: operator review
   Disputed --> NoShow: operator review
   Cancelled --> [*]
@@ -1610,6 +1635,7 @@ flowchart TB
 | 3.2 Directory use cases                  | UC-05, UC-06   | FR-DIR-01 to FR-DIR-04                                                 | [13 §3](13-interfaces.md#3-directory-rest-api-phase-3)                                              |
 | 3.3 App use cases                        | UC-07, UC-11   | FR-APP-01 to FR-APP-06                                                 | [14](14-user-interface-design.md)                                                                   |
 | 3.4 Ratings use cases                    | UC-08          | FR-RATE-01 to FR-RATE-05                                               | [08](08-data-design.md)                                                                             |
+| 7.12 MCP gateway sequence                | UC-12          | FR-DIR-07, FR-MSG-19, FR-GATE-06                                       | [13 §6](13-interfaces.md#6-minimal-mcp-gateway-phase-3)                                             |
 | 3.5 Operations use cases                 | UC-09, UC-10   | FR-ADMIN-01, FR-ADMIN-02, NFR-PRIV-02                                  | [12](12-security-and-privacy.md), [18](18-deployment-and-operations.md)                             |
 | 4.1 Offer and booking core               | UC-01 to UC-04 | FR-BOOK-01, FR-BOOK-02, FR-GATE-02, FR-GATE-04                         | [08 §1](08-data-design.md#1-entity-relationship-model), [09 §5](09-data-dictionary.md#5-entities)   |
 | 4.2 Directory and identity               | UC-05 to UC-07 | FR-DIR-01, FR-DIR-03, FR-MSG-09, FR-APP-01                             | [09 §5](09-data-dictionary.md#5-entities), [13 §2](13-interfaces.md#2-versioning-and-compatibility) |
@@ -1645,3 +1671,4 @@ flowchart TB
 | ------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
 | 1.0     | 2026-11-09 | First baseline: actor catalogue, use case, class, package, component, deployment, sequence, state and swimlane activity diagrams                                                                                                                                                                                                                                                                                              | S. Jannisar |
 | 1.1     | 2026-11-09 | Round 3: expert panel audit, user-to-user reframing, US jurisdiction: standing approval only in the pilot (manual diagrams marked Later); Jordan and UC-11; customer contact block, booking snapshot and outcome attributes; enums aligned to 09 v1.3 (no `purged`, `deleted` or outcome `rejected`; `released` for early release, `disputed`, `unresolved`); new sequences 7.9 to 7.11 and booking outcome state machine 8.4 | S. Jannisar |
+| 1.2     | 2026-11-09 | Round 5: protocol first (no pricing), minimal MCP gateway in v1, final QA fixes, frozen for the Phase 2 spike                                                                                                                                                                                                                                                                                                                 | S. Jannisar |

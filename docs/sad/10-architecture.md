@@ -3,8 +3,8 @@
 | Field       | Value                                                                                               |
 | ----------- | --------------------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-10                                                                                           |
-| Version     | 1.3                                                                                                 |
-| Status      | Baselined for Phase 2                                                                               |
+| Version     | 1.5                                                                                                 |
+| Status      | Frozen for Phase 2 spike                                                                            |
 | Date        | 2026-11-09                                                                                          |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                    |
 | Conforms to | ISO/IEC/IEEE 42010:2022 (architecture description: views, viewpoints, rationale); C4 model notation |
@@ -85,6 +85,7 @@ flowchart TB
   marcus([Marcus]) --> dash[Barber dashboard]
   priya([Priya's own agent]) -. A2A .-> bizAgent
   sam([Sam, operator]) --> admin[Admin console]
+  asst([People's own assistants: Claude, ChatGPT, Gemini]) -- MCP --> mcp[Minimal MCP gateway]
 
   subgraph Hitchpost
     app --> personal[Personal agent lines]
@@ -94,6 +95,8 @@ flowchart TB
     personal -- REST --> dir[Directory service]
     bizAgent -- register --> dir
     admin --> dir
+    mcp -- search --> dir
+    mcp -- A2A --> bizAgent
     personal -- interaction records --> rate[Ratings service]
     bizAgent -- interaction records --> rate
     dir --> rate
@@ -103,20 +106,21 @@ flowchart TB
   personal -- calendar write --> cal[(Dana's calendar)]
 ```
 
-Every person and every business has an agent line. A person's contacts can be businesses or other people: the same A2A transport, cards and approval gate carry both, which is why the personal agent appears on both ends of an A2A edge above (UC-11, Phase 4). How these containers are packed into deployable units is decided in [26 Service architecture](26-service-architecture.md) and [ADR 0019](../decisions/0019-service-architecture.md); module-level design is in [28 Software design description](28-software-design-description.md).
+People's own assistants reach agent lines through the **minimal MCP gateway** (Phase 3, a v1 Must): find an agent line, read its card and profile, ask for availability, and get an offer approved only through an explicit human confirmation. The full gateway (relationships, consultation) is stage L3. Every person and every business has an agent line. A person's contacts can be businesses or other people: the same A2A transport, cards and approval gate carry both, which is why the personal agent appears on both ends of an A2A edge above (UC-11, Phase 4). How these containers are packed into deployable units is decided in [26 Service architecture](26-service-architecture.md) and [ADR 0019](../decisions/0019-service-architecture.md); module-level design is in [28 Software design description](28-software-design-description.md).
 
 ## 4. Containers
 
-| Container                              | Responsibility                                                                                                                                                                                               | Status                    | Code                                                       |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- | ---------------------------------------------------------- |
-| **core**                               | Message types, validators, A2A part helpers. No I/O.                                                                                                                                                         | Built                     | `packages/core/src/booking.ts`, `packages/core/src/a2a.ts` |
-| **barber-agent** (business agent host) | A2A server per business: agent card, availability, booking, cancel. Owns the book, offers and its audit log.                                                                                                 | Built (availability only) | `packages/barber-agent/src/`                               |
-| **my-agent** (personal agent)          | Asks business agents and other people's agent lines, validates replies, runs the approval gate, sends the customer contact block, keeps the personal booking copy, writes the calendar event.                | Built (ask only)          | `packages/my-agent/src/`                                   |
-| **e2e**                                | End-to-end tests that start several agents together. Replaces my-agent's dev dependency on barber-agent.                                                                                                     | Phase 2                   | `packages/e2e/`                                            |
-| **directory**                          | Register, verify and search business agents. REST API. Hosts the admin console.                                                                                                                              | Phase 3                   | `packages/directory/`                                      |
-| **dashboard** (barber dashboard)       | Web UI for business owners: services, hours, cancellation terms, bookings with customer contact, mark completed or no-show. Manual-approval queue is Later.                                                  | Phase 4                   | `packages/dashboard/`                                      |
-| **app**                                | PWA for people: contacts are agent lines (people and businesses), chat, approval sheet, bookings, reminders (P-29). App API over REST plus Server-Sent Events; hosts the personal agent line per person.     | Phase 4                   | `packages/app/`                                            |
-| **ratings**                            | Builds interaction records from both sides' logs (accepted only when both sides' JCS hashes of the offer and decision match; signatures from Phase 6), computes behaviour metrics, accepts verified reviews. | Phase 5                   | `packages/ratings/`                                        |
+| Container                              | Responsibility                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Status                    | Code                                                       |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- | ---------------------------------------------------------- |
+| **core**                               | Message types, validators, A2A part helpers. No I/O.                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Built                     | `packages/core/src/booking.ts`, `packages/core/src/a2a.ts` |
+| **barber-agent** (business agent host) | A2A server per business: agent card, availability, booking, cancel. Owns the book, offers and its audit log.                                                                                                                                                                                                                                                                                                                                                                                                                  | Built (availability only) | `packages/barber-agent/src/`                               |
+| **my-agent** (personal agent)          | Asks business agents and other people's agent lines, validates replies, runs the approval gate, sends the customer contact block, keeps the personal booking copy, writes the calendar event.                                                                                                                                                                                                                                                                                                                                 | Built (ask only)          | `packages/my-agent/src/`                                   |
+| **e2e**                                | End-to-end tests that start several agents together. Replaces my-agent's dev dependency on barber-agent.                                                                                                                                                                                                                                                                                                                                                                                                                      | Phase 2                   | `packages/e2e/`                                            |
+| **directory**                          | Register, verify and search business agents. REST API. Hosts the admin console.                                                                                                                                                                                                                                                                                                                                                                                                                                               | Phase 3                   | `packages/directory/`                                      |
+| **dashboard** (barber dashboard)       | Web UI for business owners: services, hours, cancellation terms, bookings with customer contact, mark completed or no-show. Manual-approval queue is Later.                                                                                                                                                                                                                                                                                                                                                                   | Phase 4                   | `packages/dashboard/`                                      |
+| **app**                                | PWA for people: contacts are agent lines (people and businesses), chat, approval sheet, bookings, reminders (P-29). App API over REST plus Server-Sent Events; hosts the personal agent line per person.                                                                                                                                                                                                                                                                                                                      | Phase 4                   | `packages/app/`                                            |
+| **mcp-gateway** (minimal MCP gateway)  | Phase 3, v1 Must. An MCP server for people's own assistants (Claude, ChatGPT, Gemini): tools to find an agent line (directory search), read its card and profile, send an `availability_request`, and approve an offer only through an explicit human confirmation step (deep link or the assistant's own confirmation; never auto-approve). It holds no booking state; it calls agent lines over A2A with the same validation and origin pinning as my-agent. Relationships and consultation are the full gateway, stage L3. |
+| **ratings**                            | Builds interaction records from both sides' logs (accepted only when both sides' JCS hashes of the offer and decision match; signatures from Phase 6), computes behaviour metrics, accepts verified reviews.                                                                                                                                                                                                                                                                                                                  | Phase 5                   | `packages/ratings/`                                        |
 
 ```mermaid
 flowchart LR
@@ -130,6 +134,8 @@ flowchart LR
   app[app] --> my
   app --> dir
   rate[ratings] --> core
+  mcpgw[mcp-gateway] --> my
+  mcpgw --> dir
 ```
 
 Rule: `core` depends only on SDK _types_. Nothing depends on `e2e`. Services talk over A2A or REST, never by importing each other's internals; the dashboard uses the business agent host's owner API, the app hosts my-agent as a library.
@@ -174,16 +180,17 @@ Rule: `core` depends only on SDK _types_. Nothing depends on `e2e`. Services tal
 
 ### Directory, dashboard, app, ratings
 
-| Component           | Role                                                                                             | Status  |
-| ------------------- | ------------------------------------------------------------------------------------------------ | ------- |
-| Directory API       | `POST /v1/listings`, verification, search, card fetch with SSRF guards                           | Phase 3 |
-| Verification worker | Domain proof (`/.well-known` token or DNS TXT); in person for shops without a site (D-14)        | Phase 3 |
-| JWKS registry       | Stores each listing's JWKS URL and verifies card signatures on refresh                           | Phase 6 |
-| Dashboard           | Business setup, bookings with customer contact, outcome marking; manual-approval queue Later     | Phase 4 |
-| App shell           | Contacts (people and businesses), chat thread, approval sheet, bookings, reminders, Web Push     | Phase 4 |
-| Rating ingest       | Builds interaction records from both sides' audit events                                         | Phase 5 |
-| Review service      | Reviews only on verified interactions                                                            | Phase 5 |
-| Moderation          | Report queue, manual takedown with statement of reasons, appeal, audit trail; auto-suspend Later | Phase 5 |
+| Component           | Role                                                                                                                                                                                                                                             | Status  |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------- |
+| Directory API       | `POST /v1/listings`, verification, search, card fetch with SSRF guards                                                                                                                                                                           | Phase 3 |
+| Verification worker | Domain proof (`/.well-known` token or DNS TXT); in person for shops without a site (D-14)                                                                                                                                                        | Phase 3 |
+| MCP gateway tools   | The six tools in [13](13-interfaces.md) section 6: `find_agent_line`, `read_agent_line`, `request_availability`, `approve_offer` (returns a confirmation step), `confirm_booking` (only with the one-time confirmation), `decline_offer` (UC-12) | Phase 3 |
+| JWKS registry       | Stores each listing's JWKS URL and verifies card signatures on refresh                                                                                                                                                                           | Phase 6 |
+| Dashboard           | Business setup, bookings with customer contact, outcome marking; manual-approval queue Later                                                                                                                                                     | Phase 4 |
+| App shell           | Contacts (people and businesses), chat thread, approval sheet, bookings, reminders, Web Push                                                                                                                                                     | Phase 4 |
+| Rating ingest       | Builds interaction records from both sides' audit events                                                                                                                                                                                         | Phase 5 |
+| Review service      | Reviews only on verified interactions                                                                                                                                                                                                            | Phase 5 |
+| Moderation          | Report queue, manual takedown with statement of reasons, appeal, audit trail; auto-suspend Later                                                                                                                                                 | Phase 5 |
 
 ## 6. Key sequences
 
@@ -295,6 +302,9 @@ sequenceDiagram
 flowchart LR
   user([Browsers and installed PWA]) --> cdn[CDN: app and dashboard static]
   user --> appbe["App backend: personal agent lines, App API, SSE, Web Push, reminders"]
+  asst([People's own assistants over MCP]) --> mcpd["MCP gateway (minimal, Phase 3)"]
+  mcpd --> host
+  mcpd --> plat
   ext([External A2A agents]) --> host["Agent host: business agent lines, *.agents.hitchpost.dev"]
   appbe --> host
   appbe --> plat["Platform service: directory, ratings, moderation, analytics, admin"]
@@ -348,3 +358,4 @@ New and proposed:
 | 1.1     | 2026-11-09 | Remediation after independent review: 42010 viewpoint catalogue and correspondence rules, corrected booking sequence (Reserved, `WORKING`, polling), deployment with personal agents, ratings, dashboard, subdomain tenancy and signing keys, concurrency, time zones Phase 6                                                                                                                                                                                                                                                                            | S. Jannisar |
 | 1.2     | 2026-11-09 | Second remediation after regrade: booking sequence and cross-cutting rows matched to SDK 1.3 behaviour (extension header, duplicate handling, client-chosen contextId); capabilities offerId and bookingToken; interaction records attested by hashes in Phase 5, signed in Phase 6                                                                                                                                                                                                                                                                      | S. Jannisar |
 | 1.3     | 2026-11-09 | Round 3: expert panel audit, user-to-user reframing, US jurisdiction: agent lines between people and businesses, UC-11 person-to-person sequence (proposed); standing approval only in the pilot (manual branch Later); customer contact block and personal booking copy; Task rebuild from bookings, method policy and resolver as proposed O-1 and O-2 designs; install-key caps, dedupe, Host allowlist, health and JSON logs in Phase 2; dashboard Phase 4, moderation Phase 5; three deployables per ADR 0019 with links to 26 and 28; RPO restated | S. Jannisar |
+| 1.5     | 2026-11-09 | Round 5: protocol first (no pricing), minimal MCP gateway in v1, final QA fixes, frozen for the Phase 2 spike                                                                                                                                                                                                                                                                                                                                                                                                                                            | S. Jannisar |
