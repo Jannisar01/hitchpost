@@ -1,5 +1,10 @@
 import { Role } from "@a2a-js/sdk";
-import { ClientFactory, ClientFactoryOptions, DefaultAgentCardResolver } from "@a2a-js/sdk/client";
+import {
+  ClientFactory,
+  ClientFactoryOptions,
+  DefaultAgentCardResolver,
+  JsonRpcTransportFactory,
+} from "@a2a-js/sdk/client";
 import {
   type AvailabilityRequest,
   type BarberReply,
@@ -22,15 +27,22 @@ export async function askForSlot(
   const request = parseAvailabilityRequest(input);
   if (!request) throw new AskError("That request isn't valid: check the service and the dates.");
 
-  // One deadline for the whole exchange, card discovery included.
+  // One deadline for the whole exchange, card discovery included. No redirects anywhere.
   const signal = AbortSignal.timeout(timeoutMs);
-  const cardResolver = new DefaultAgentCardResolver({
-    fetchImpl: (url, init) => fetch(url, { ...init, redirect: "error", signal }),
-  });
+  const fetchImpl: typeof fetch = (url, init) => fetch(url, { ...init, redirect: "error", signal });
+
+  // The card says where to send calls. Only trust it if every address stays on the origin we asked.
+  const card = await new DefaultAgentCardResolver({ fetchImpl }).resolve(barberUrl);
+  const origin = new URL(barberUrl).origin;
+  if (card.supportedInterfaces.some((i) => new URL(i.url).origin !== origin)) {
+    throw new AskError("That agent's card sends calls to a different address, so I didn't use it.");
+  }
   const factory = new ClientFactory(
-    ClientFactoryOptions.createFrom(ClientFactoryOptions.default, { cardResolver }),
+    ClientFactoryOptions.createFrom(ClientFactoryOptions.default, {
+      transports: [new JsonRpcTransportFactory({ fetchImpl })],
+    }),
   );
-  const client = await factory.createFromUrl(barberUrl);
+  const client = await factory.createFromAgentCard(card);
   const result = await client.sendMessage(
     {
       tenant: "",

@@ -100,6 +100,23 @@ test("my agent refuses an offer that doesn't answer its request", async () => {
   await assert.rejects(askForSlot(sneaky.url, request), /doesn't match/);
 });
 
+test("my agent refuses a card that points its calls at another origin", async () => {
+  // A card served from one origin whose interface sends the actual calls to a different one.
+  const real = await (await fetch(`${barber.url}/.well-known/agent-card.json`)).json();
+  const { createServer: createHttpServer } = await import("node:http");
+  const decoy = createHttpServer((_req, res) => {
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify(real)); // still names barber.url, a different port, so a different origin
+  });
+  await new Promise<void>((resolve) => decoy.listen(0, "127.0.0.1", resolve));
+  const port = (decoy.address() as { port: number }).port;
+  try {
+    await assert.rejects(askForSlot(`http://127.0.0.1:${port}`, request), /different address/);
+  } finally {
+    decoy.close();
+  }
+});
+
 test("my agent gives up on an agent that never answers", async () => {
   // Accepts the connection, never replies: covers agent card discovery, not just the message.
   const silent: Server = createServer(() => {});
