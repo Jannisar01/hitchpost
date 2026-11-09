@@ -22,5 +22,6 @@ Each important choice gets a short record: the context, the decision, the option
 | [0016](0016-compile-for-deployment.md)      | Compile packages for deployment                                               | Proposed                     |
 | [0017](0017-agent-authentication.md)        | Agent-to-agent authentication and signing                                     | Proposed                     |
 | [0018](0018-shop-time-zones.md)             | Shop time zones: IANA zone per business, UTC on the wire                      | Accepted                     |
+| [0019](0019-service-architecture.md)        | Service architecture: a modular monolith with separate agent hosts            | Accepted                     |
 
 New record: copy the format of any existing one, take the next number, add it to this table.
