@@ -1,0 +1,17 @@
+{
+  "name": "@hitchpost/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "@a2a-js/sdk": "^1.3.0",
+    "@hitchpost/barber-agent": "workspace:*",
+    "@hitchpost/core": "workspace:*",
+    "@hitchpost/my-agent": "workspace:*",
+    "express": "^5.3.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6"
+  }
+}
