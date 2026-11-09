@@ -45,3 +45,9 @@ I'm stopping prose remediation at version 1.2 and moving to evidence. O-1 and O-
 ## Freeze
 
 The package is frozen for the Phase 2 spike (document control §6.4). Further grading is pointless until there is evidence: the spike proves the booking protocol against SDK 1.3 in code, closing O-1 and O-2, and the documents change only through docs-change citing that evidence.
+
+## Status after the Phase 2 spike (2026-11-09)
+
+- **O-1 closed in code.** `MethodPolicyHandler` refuses `ListTasks` and `CancelTask`; the e2e test fails if the policy is removed (checked by mutation). The rule "never place a bookingToken in task history" turned out to be impossible and is superseded by [ADR 0021](../decisions/0021-task-and-token-exposure.md).
+- **O-2 closed in principle.** SDK fact F7 shows a WORKING task can be finished by writing to the task store, with no executor running. The resolver is built when persistence lands.
+- Evidence: [Phase 2 spike report](2026-11-09-phase-2-spike.md).

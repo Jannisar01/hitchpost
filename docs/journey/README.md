@@ -211,3 +211,29 @@ Complete UML and EERD work, swimlanes and actors; the full BA set (BRD, PRD with
 ### Next
 
 The Phase 2 protocol spike, in code, against `@a2a-js/sdk` 1.3.
+
+---
+
+## 2026-11-09 · The Phase 2 spike: proving it in code
+
+### Why
+
+Three independent grades in a row said the same thing: the next grade needs evidence, not more documents. So I froze the design package and built the booking protocol against the real SDK.
+
+### How I ran it
+
+- **Evidence before building.** I started with seven tests that pin down what `@a2a-js/sdk` 1.3 actually does, rather than what our documents assumed. They found that the SDK stores whatever a finished task says and hands every caller every task through `ListTasks`, so the leak the reviewers worried about was real. They also proved the fixes would work before I wrote them.
+- **Then the protocol.** Offers became real holds with an expiry. A booking runs as an A2A Task that checks and writes in one step. Resends return the original confirmation instead of booking twice. Each business has a hold cap that rotating client keys can't get around. The agent refuses the methods that leaked. On the person's side, an approval gate means nothing books without a typed yes to that exact offer.
+- **Then I checked the tests had teeth.** All 11 booking tests passed first time, which made me suspicious, so I broke the code three ways on purpose: no de-duplication, holds that don't block, no method policy. Each break was caught by exactly the test written for it.
+
+### A rule the evidence overturned
+
+The design said a booking token must never appear in stored task history. Running the SDK showed that can't be met: the token has to reach the person, and it travels in the task's final message, which the SDK stores. The real protection is refusing to list tasks and treating the task id as a secret. I recorded that in [ADR 0021](../decisions/0021-task-and-token-exposure.md) and changed the frozen documents through docs-change, citing the evidence.
+
+### Result
+
+44 tests passing, up from 23. Open findings O-1 and O-2 closed. A live run books a haircut only after "Book it? (y/N)" gets a "y", and the chair is gone for the next person. Full report: [Phase 2 spike](../audits/2026-11-09-phase-2-spike.md).
+
+### Next
+
+The rest of Phase 2, re-estimated from the spike: persistence so bookings survive a restart, cancel and reschedule, the required contract extension, the customer contact and offer disclosure blocks, and audit logs on both sides.
