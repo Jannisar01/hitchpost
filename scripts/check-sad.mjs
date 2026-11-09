@@ -9,7 +9,7 @@ const SAD = "docs/sad";
 const docs = readdirSync(SAD).filter((f) => /^\d{2}-.+\.md$/.test(f));
 const extra = ["README.md", "docs/journey/README.md", "docs/bugs.md", "docs/sad/README.md"];
 const files = docs.map((f) => join(SAD, f)).concat(extra.filter(existsSync));
-const read = (f) => readFileSync(f, "utf8").replace(/^﻿/, "");
+const read = (f) => readFileSync(f, "utf8").replace(/^\uFEFF/, "");
 const problems = [];
 const fail = (f, line, msg) => problems.push(`${f}${line ? `:${line}` : ""}  ${msg}`);
 
