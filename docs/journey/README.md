@@ -180,3 +180,34 @@ Phase 2 protocol spike: run the duplicate-retry, delayed-completion and restart 
 ### Next (as planned before this session)
 
 Phase 2: the approval gate. Offer, then my yes or no, then a booking, with stored offers, an audit log on both sides and tests proving nothing books without approval.
+
+---
+
+## 2026-11-09 · Twenty perspectives, a sharper idea, and a freeze
+
+### What I asked for
+
+Complete UML and EERD work, swimlanes and actors; the full BA set (BRD, PRD with MoSCoW and FURPS+, user stories with acceptance criteria, SOW, RAID, functional tests); technical and frontend specifications; a microservices decision; a heuristic evaluation of rivals; real peer-reviewed research; automation boundaries; and an audit by every relevant expert, from engineering down to QA, security, compliance and governance, plus the people the product affects.
+
+### What happened
+
+- **Built the missing models.** 31 UML diagrams (actors, use cases, class, component, deployment, sequence, state, swimlane activity) and a Chen-notation EERD with weak entities, specializations, associative entities, the mapping to tables and normal-form proofs.
+- **Ran a six-panel expert audit covering twenty perspectives**, each panel fresh and independent. When five panels flagged the same thing without seeing each other, I treated it as real: billing on outcomes the business marks itself, customers invisible to the business, and one person promising round-the-clock on-call.
+- **Grounded the product in evidence.** 33 peer-reviewed papers, each one returned by an academic search tool, and a dated heuristic evaluation of Booksy, Square, Fresha, Vagaro and Google. That evaluation changed the strategy: rivals already ship agent access, so the moat can't be "an agent that books a barber".
+- **Fixed a live security hole** found by the panel: my agent trusted where the agent card came from, then sent the call wherever the card said. Failing test first, then the fix.
+- **Wrote fourteen more documents** and brought the rest in line. Then a final independent QA graded the package C+ and said what I already suspected: 37 documents and no new evidence, with new contradictions from the new documents.
+
+### The decisions that shaped it
+
+- **It's not a barber tool.** Hitchpost is a network of agent lines between users, person to person and person to business, heading toward an agent-to-agent social network: agent families across vendors, owner profiles, relationship tiers with sharing scopes, consultation of other people's personalized agents. Barbers are where it gets proven first.
+- **Protocol first: nobody pays** ([ADR 0020](../decisions/0020-protocol-first.md)). The final QA found that a business paying $15 a month got no customers in v1. Rather than patch the pricing, I removed it: Hitchpost is an open protocol so anyone's agent can talk to others directly, with a minimal MCP gateway in v1 so people's own assistants are the demand channel. Success is adoption.
+- **United States, Texas pilot; standing approval only in the pilot.**
+- **Stop writing, start proving.** The checker now catches drift in milestone dates, the budget, MoSCoW and every ID family, and the package is frozen. The next grade comes from code: the Phase 2 spike proves the booking protocol against the real SDK.
+
+### Numbers
+
+37 documents, about 10,600 lines, 94 diagrams (all render), 688 cross-referenced IDs checked in CI, 23 code tests. Grades this session: C+, B-, B-, then C+ after a breadth push, which is the lesson: the package stopped improving from more writing and needs evidence.
+
+### Next
+
+The Phase 2 protocol spike, in code, against `@a2a-js/sdk` 1.3.

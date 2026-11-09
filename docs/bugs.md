@@ -5,6 +5,7 @@ Every real problem the project ran into: what happened, the root cause, the fix 
 ## 2026-11-09 · Found by the expert panel audit
 
 ### A card could send my agent's calls to another server
+
 - **Problem:** my agent checked where it fetched the agent card from, but then sent the booking request to whatever address the card listed, following redirects. A hostile card could point the call at any host.
 - **Root cause:** the SDK takes the call address from the card's `supportedInterfaces`; only the card fetch was locked down.
 - **Fix:** resolve the card ourselves, refuse it if any interface is on a different origin from the address asked, and give the call transport the same no-redirect fetch.
