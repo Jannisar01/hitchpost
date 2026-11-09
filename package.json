@@ -12,7 +12,8 @@
     "format": "biome check --write .",
     "typecheck": "tsc",
     "test": "node --test \"packages/*/src/**/*.test.ts\"",
-    "docs:pdf": "node scripts/build-sad-pdf.mjs"
+    "docs:pdf": "node scripts/build-sad-pdf.mjs",
+    "docs:check": "node scripts/check-sad.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.6",
