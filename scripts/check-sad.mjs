@@ -3,7 +3,7 @@
 // values that restate a normative parameter match the register in 00 §10.1, and
 // phase labels for key capabilities match the phase map in 00 §10.2.
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { basename, dirname, join, resolve } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 const SAD = "docs/sad";
 const docs = readdirSync(SAD).filter((f) => /^\d{2}-.+\.md$/.test(f));
@@ -203,7 +203,7 @@ for (const line of read(join(SAD, "05-requirements.md")).split("\n")) {
     continue;
   }
   const cells = line.split("|").map((c) => c.trim());
-  const h = cells.findIndex((c) => c === "MoSCoW");
+  const h = cells.indexOf("MoSCoW");
   if (h >= 0) {
     col = h;
     continue;
