@@ -3,7 +3,7 @@
 | Field       | Value                                                                                                                                                                          |
 | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Document ID | HP-SAD-17                                                                                                                                                                      |
-| Version     | 1.2                                                                                                                                                                            |
+| Version     | 1.3                                                                                                                                                                            |
 | Status      | Baselined for Phase 2                                                                                                                                                          |
 | Date        | 2026-11-09                                                                                                                                                                     |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                                                                                               |
@@ -11,7 +11,7 @@
 
 ## 1. Purpose and scope
 
-How Hitchpost moves from a tested build into real use by real barbers and customers in one neighbourhood, without anyone losing a booking. It covers:
+How Hitchpost moves from a tested build into real use by real businesses and people in one neighbourhood, without anyone losing a booking. Hitchpost is a network of agent lines between users; the pilot proves it with barbershops, the beachhead vertical ([01](01-vision-and-scope.md)). The pilot runs in Texas, United States, in USD and America/Chicago time. It covers:
 
 - the staged pilot
 - onboarding runbooks for barbers and customers
@@ -34,18 +34,18 @@ Operation after hypercare is covered in [18 Deployment and operations](18-deploy
 
 ## 3. Staged pilot design
 
-| Stage                          | When                                                                     | Who                                                     | What runs                                                                                                                                   | Exit criteria                                                                                                                                                                            | Proves              |
-| ------------------------------ | ------------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
-| **S0. Wizard-of-Oz** (WP-0.1)  | 2026-11-16 to 2027-01-10 (8 weeks)                                       | About 15 people, any barbers they use                   | No software. I act as each person's agent and as the barber's agent over WhatsApp, following the UC-02 flow by hand                         | At least 60% complete one booking through the agent, at least 30% complete two, and first-offer approval at least 50% (A-01 rule); time-to-book at least 50% faster than baseline (A-04) | A-01, A-04          |
-| **S1. Closed alpha** (WP-6.11) | 2027-09-21 to 2027-10-12 (3 weeks)                                       | 2 friendly barbers, 10 people from S0                   | Phase 2 to 6 pre-pilot build on **staging**, which exists from WP-6.1 (Phase 6); hosted book reconciled with the shop's tool daily, by hand | Zero double bookings; zero bookings without approval; every booking reconciled; barbers would continue                                                                                   | RC 1 under real use |
-| **S2. Pilot** (WP-6.9)         | 2027-10-19 to 2028-01-25 (12 active weeks plus the 2-week holiday pause) | 5 to 10 barbers in one neighbourhood, target 50+ people | Production build, connector or calendar sync per shop (section 4.3)                                                                         | The v1 release criteria in [01](01-vision-and-scope.md), measured over the last 4 weeks                                                                                                  | RC 1 to RC 6        |
-| **S3. v1 decision** (M-08)     | 2028-02-08                                                               | Me                                                      | Review of S2 results                                                                                                                        | Go: v1 release. Extend: up to 4 more pilot weeks. Stop: apply the kill criteria in [03](03-business-case.md)                                                                             | G-1 to G-5          |
+| Stage                          | When                                                                                                                     | Who                                                                                | What runs                                                                                                                                                              | Exit criteria                                                                                                                                                          | Proves              |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------- |
+| **S0. Wizard-of-Oz** (WP-0.1)  | Recruitment 2026-11-10 to 2026-11-29; study 2026-11-30 to 2027-02-21 (10 active weeks, paused over the year-end holiday) | 30 strangers recruited by screener (no friends or family), any businesses they use | No software. A person operates the agent, and participants are told so at consent. A scripted persona with fixed response latency follows the UC-02 flow over WhatsApp | The pre-registered continue / iterate / kill bands for A-01 and A-04 in [03](03-business-case.md), reported with 95% confidence intervals; baselines exclude the owner | A-01, A-04          |
+| **S1. Closed alpha** (WP-6.11) | 2028-01-11 to 2028-02-01 (3 weeks)                                                                                       | 2 friendly businesses (barbershops), 10 people from S0                             | Phase 2 to 6 pre-pilot build on **staging**, which exists from WP-6.1 (Phase 6); standing approval only                                                                | Zero double bookings; zero bookings without approval; every booking reconciled; both businesses sign a letter of intent or pay the refundable $10 deposit (WP-6.14)    | RC 1 under real use |
+| **S2. Pilot** (WP-6.9)         | 2028-02-01 to 2028-04-25 (12 active weeks); listings stay live through the review to M-08                                | 5 to 10 businesses and 30 to 60 people in one neighbourhood (P-22)                 | Production build, connector or calendar sync per business (section 4.3)                                                                                                | The v1 release criteria in [01](01-vision-and-scope.md), measured over the P-21 window (2028-04-11 to 2028-05-09)                                                      | RC 1 to RC 6        |
+| **S3. v1 decision** (M-08)     | 2028-05-09                                                                                                               | Me                                                                                 | Review of S2 results                                                                                                                                                   | Go: v1 release. Extend: up to 4 more pilot weeks. Stop: apply the kill criteria in [03](03-business-case.md)                                                           | G-1 to G-5          |
 
-S0 runs 8 weeks because people book every 3 to 4 weeks ([04](04-stakeholders-and-personas.md)); a shorter test couldn't observe a second booking. S1 depends on staging, so it sits inside Phase 6 after WP-6.1, not before it. Dates come from [16 Project plan](16-project-plan.md) section 5.
+S0 runs 10 active weeks because people book every 3 to 4 weeks ([04](04-stakeholders-and-personas.md)), so each participant gets at least two booking cycles; it pauses over the holiday because the operator is away, and results are analysed per booking cycle. S0 needs the research consent form and P-27 retention before the first invitation. S1 depends on staging, so it sits inside Phase 6 after WP-6.1, not before it. Dates come from [16 Project plan](16-project-plan.md) section 5.
 
-**Holiday pause.** From 2027-12-20 to 2028-01-02 every pilot listing is set to `paused`, with two weeks' notice to shops and their customers. Paused agents answer new requests with `rejected` ("temporarily unavailable"); confirmed bookings in the pause stay in the shop's own tool. Because nothing new is booked through Hitchpost while paused, no SEV1 response is promised in those two weeks (P-17). RC 1 and RC 2 are measured over the 4 active weeks 2027-11-22 to 2027-12-19, so the measurement window never straddles the pause ([16 Project plan](16-project-plan.md)).
+**No holiday pause.** The pilot runs February to April, outside the year-end holiday. Live listings are never paused for an owner holiday or absence: the backup operator covers SEV1 per P-28, and every booking and listing shows the business phone as the fallback. Reduced coverage, if any, is stated on the status page.
 
-**Pilot neighbourhood selection:** at least 15 barbershops within walking distance, at least 3 of them from the A-02 interviews willing to list, and close enough for me to visit any shop the same day.
+**Pilot neighbourhood selection:** at least 15 barbershops within walking distance, at least 3 of them from the A-02 interviews willing to list, and close enough for me to visit any business the same day. Recruitment follows the script and channels in [29 Go-to-market plan](29-go-to-market-plan.md).
 
 ## 4. Barber onboarding runbook
 
@@ -77,15 +77,15 @@ Chosen per shop from the A-03 audit result:
 | C2. Calendar sync                                 | The tool exports and imports a calendar but has no booking API | Busy blocks are read from the calendar; Hitchpost bookings are written as calendar events | Daily check; the barber confirms new bookings appear in the tool                            |
 | C3. Hosted book                                   | No usable integration                                          | Hitchpost holds the book; the barber sees Hitchpost bookings in the app                   | Barber blocks Hitchpost slots in their own tool. A daily reminder lists bookings to mirror. |
 
-C3 carries the highest risk of double booking. Shops on C3 are capped at 3 of the pilot, and each gets a daily reconciliation in hypercare.
+C3 carries the highest risk of double booking and asks the business to mirror bookings by hand, which the panel review found is the most likely reason a barber leaves. C3 is capped at **1 business** in the pilot, with daily reconciliation in hypercare; if no candidate accepts daily mirroring, C3 is dropped and only C1 and C2 businesses join.
 
 ### 4.4 At the visit (barber's time, 15 minutes or less)
 
-1. Explain what Hitchpost does and the standing-approval default: bookings in open hours are accepted. Offer the manual-approval switch (FR-GATE-05). (3 min)
-2. Confirm services, prices, durations and hours from the draft listing; correct them on the spot. (4 min)
+1. Explain what Hitchpost does and how approval works in the pilot: standing approval only, so bookings in open hours are accepted, and each booking carries the customer's name and phone (the customer contact block) so the barber knows who is coming. (3 min)
+2. Confirm services, prices, durations, hours, legal name, phone and cancellation terms from the draft listing; correct them on the spot. (4 min)
 3. Complete the connection authorization (C1), confirm the calendar (C2), or show the hosted book (C3). (4 min)
 4. Run one live test booking from my phone; the barber sees it arrive and confirms it in their tool. (3 min)
-5. Publish the listing and place the QR code at the counter. (1 min)
+5. Sign the business terms and the letter of intent, or take the refundable $10 deposit (WP-6.14); publish the listing and place the QR code at the counter. (1 min)
 
 ### 4.5 After the visit
 
@@ -97,10 +97,10 @@ C3 carries the highest risk of double booking. Shops on C3 are capped at 3 of th
 ## 5. Customer onboarding
 
 1. **Entry points:** the QR code at the counter, a personal invite from the S0 group, or a link shared by the barber.
-2. **Install and consent:** the person installs the client app and reads the privacy notice in plain language ([12 Security and privacy](12-security-and-privacy.md)). Account creation asks for a name and a contact method only (NFR-PRIV-01).
-3. **First contact:** the QR code adds the shop's agent as a contact directly (FR-APP-01). The built-in personal agent is enabled by default (FR-APP-03).
-4. **Guided first booking:** a short in-app walkthrough of the approval screen (FR-APP-02). It covers what will be booked, until when the offer holds, and that nothing happens without a yes.
-5. **Follow-up:** a reminder before the appointment, and a single question after it ("Did it go as booked?"). The answer feeds the honored-booking metric.
+2. **Install and consent:** the person installs the client app (a PWA) and reads the privacy notice and terms in plain language ([12 Security and privacy](12-security-and-privacy.md), [35](35-legal-compliance-and-governance.md)). Accounts are 18+; minors book through a guardian's agent line. Account creation asks for a name and a verified phone only (NFR-PRIV-01). Consent to share the customer contact block with a business is asked at the first booking; SMS reminders need separate TCPA consent.
+3. **First contact:** the QR code adds the business's agent line as a contact directly (FR-APP-01). Contacts can be people or businesses (UC-11). The built-in personal agent is enabled by default (FR-APP-03).
+4. **Guided first booking:** a short in-app walkthrough of the approval screen (FR-APP-02). It covers what will be booked, the business's legal name and phone, the total price and cancellation terms, the absolute "held until" time, and that nothing happens without a yes.
+5. **Follow-up:** reminders 24 hours and 2 hours before the appointment (P-29), and a single question after it ("Did it go as booked?"). The answer feeds the outcome resolution rule (P-25) and the north star.
 
 ## 6. Data conversion and migration
 
@@ -119,21 +119,23 @@ There is no legacy Hitchpost data to migrate. Conversion means bringing each sho
 
 Every item must be **Go**. Any **No-go** item moves the go-live date.
 
-| #   | Item                                                                        | Evidence                            | Traces to              |
-| --- | --------------------------------------------------------------------------- | ----------------------------------- | ---------------------- |
-| 1   | Phase 2 to 5 gates passed                                                   | Gate records in `docs/audits/`      | M-03 to M-06           |
-| 2   | S1 exit criteria met                                                        | S1 report                           | RC 1                   |
-| 3   | Pre-release security audit: no open high or critical findings               | Audit report                        | RC 3, WP-6.8           |
-| 4   | Agent-to-agent authentication and rate limits on in production              | Config and test evidence            | NFR-SEC-02, NFR-SEC-03 |
-| 5   | Monitoring and alerts on the booking path; on-call is me, with phone alerts | Dashboard and a test alert received | RC 4, NFR-OBS-01       |
-| 6   | Backups running; a restore tested within the last 14 days                   | Restore log                         | RC 4                   |
-| 7   | Incident runbook drilled once                                               | Drill notes                         | RC 4                   |
-| 8   | Privacy notice published; retention jobs running; export and delete tested  | Links and test evidence             | RC 5, NFR-PRIV-02      |
-| 9   | Terms reviewed by a lawyer                                                  | Review note                         | R-07                   |
-| 10  | Per-shop kill switch tested on staging                                      | Test evidence                       | Section 8              |
-| 11  | Every launch shop reconciled and signed off (section 6)                     | Onboarding records                  | Principle 1            |
-| 12  | Support line staffed, with response targets (P-17) published                | Support page                        | Section 9, P-17        |
-| 13  | Rollback rehearsed on staging within the last 7 days                        | Rehearsal notes                     | Section 8              |
+| #   | Item                                                                                                                                                                                     | Evidence                         | Traces to              |
+| --- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ---------------------- |
+| 1   | Phase 2 to 5 gates passed                                                                                                                                                                | Gate records in `docs/audits/`   | M-03 to M-06           |
+| 2   | S1 exit criteria met                                                                                                                                                                     | S1 report                        | RC 1                   |
+| 3   | Pre-pilot security audit and human pentest: no open high or critical findings                                                                                                            | Audit and pentest reports        | RC 3, WP-6.8           |
+| 4   | Human external review before M-07: no open high findings                                                                                                                                 | Review note                      | WP-6.8                 |
+| 5   | Agent-to-agent authentication and rate limits on in production                                                                                                                           | Config and test evidence         | NFR-SEC-02, NFR-SEC-03 |
+| 6   | Monitoring, paging and the status page live on the booking path; the auto-pause (P-28) fires on an unacknowledged test alert                                                             | Dashboard, test alert, pause log | RC 4, NFR-OBS-01, P-28 |
+| 7   | **Backup operator named, runbooks handed over, one-command pause drilled** (WP-6.13)                                                                                                     | Drill notes                      | P-28, R-11             |
+| 8   | Backups running; a restore tested within the last 14 days                                                                                                                                | Restore log                      | RC 4                   |
+| 9   | Incident runbook drilled once                                                                                                                                                            | Drill notes                      | RC 4                   |
+| 10  | Legal pack reviewed by counsel and published: terms, privacy notice, business terms, review and moderation policy, accessibility statement ([35](35-legal-compliance-and-governance.md)) | Links and review note            | R-07, RC 5             |
+| 11  | Retention jobs running; export and delete tested                                                                                                                                         | Test evidence                    | RC 5, NFR-PRIV-02      |
+| 12  | Per-business kill switch tested on staging                                                                                                                                               | Test evidence                    | Section 8              |
+| 13  | Every launch business reconciled, signed the business terms, and gave a letter of intent or deposit                                                                                      | Onboarding records               | Principle 1, WP-6.14   |
+| 14  | Support line staffed, with response targets (P-17) and coverage (P-28) published                                                                                                         | Support page                     | Section 9, P-17, P-28  |
+| 15  | Rollback rehearsed on staging within the last 7 days                                                                                                                                     | Rehearsal notes                  | Section 8              |
 
 ## 8. Rollback plan
 
@@ -149,7 +151,7 @@ Severities and their triggers are defined once, in the [SEV table in 19](19-main
 
 ### 8.2 Per-shop rollback (under 5 minutes)
 
-1. Set the shop's listing to `paused` (a `ListingStatus` value in [09 Data dictionary](09-data-dictionary.md)). Its agent answers new requests with `rejected` and the reason "temporarily unavailable"; open holds and reserved offers are released.
+1. Set the business's listing to `paused` (a `ListingStatus` value in [09 Data dictionary](09-data-dictionary.md)). Its agent answers new requests with `rejected` and the reason "temporarily unavailable"; open holds are released.
 2. Confirm that bookings already made remain in the shop's own tool (C1, C2). For C3, send the barber the list of upcoming Hitchpost bookings.
 3. Message affected customers with the shop's phone number and their booking details.
 4. Log the rollback in the incident record.
@@ -158,23 +160,23 @@ Severities and their triggers are defined once, in the [SEV table in 19](19-main
 
 1. Pause every listing (one operator action).
 2. Redeploy the previous release tag, or keep the service read-only if the defect is in the new release.
-3. If data is suspect, restore the last known-good backup (P-15, RPO 5 minutes for infrastructure loss). Confirmed bookings are never lost, because each is committed before `booking_confirmed` is sent ([00](00-document-control.md#10-normative-parameters-and-phase-map)); replay the audit logs on both sides to find bookings made since the restore point and confirm each one with its shop.
+3. If data is suspect, restore the last known-good backup (P-15). The RPO is 0 for a process crash or single-node loss, because each booking is committed synchronously before `booking_confirmed` is sent; for region loss it is 5 minutes, and confirmed bookings in that window are rebuilt from the personal-side `booking_confirmed` copies ([18](18-deployment-and-operations.md) section 9). Replay the audit logs on both sides to find bookings made since the restore point and confirm each one with its business.
 4. Send each barber the upcoming-bookings list, and send customers the contact message.
 5. Resume only after root cause is found, a test that reproduces it is added, and the go/no-go items affected are re-checked.
 
 ## 9. Training and support
 
-| Audience           | Material                                                                  | Format                                        |
-| ------------------ | ------------------------------------------------------------------------- | --------------------------------------------- |
-| Barbers            | One-page guide: what arrives, how to switch manual approval, how to pause | Printed and PDF                               |
-| Barbers            | 2-minute video of a booking arriving in their tool                        | Video link                                    |
-| Customers          | In-app walkthrough of the first booking; FAQ                              | In app                                        |
-| Developers (Priya) | Contract and conformance tests, listing guide                             | Repo docs ([13 Interfaces](13-interfaces.md)) |
-| Operator (Sam)     | Onboarding runbook (section 4), rollback (section 8), moderation steps    | Repo docs                                     |
+| Audience           | Material                                                                                                   | Format                                        |
+| ------------------ | ---------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| Barbers            | One-page guide: what arrives (including the customer's name and phone), how to mark outcomes, how to pause | Printed and PDF                               |
+| Barbers            | 2-minute video of a booking arriving in their tool                                                         | Video link                                    |
+| Customers          | In-app walkthrough of the first booking; FAQ                                                               | In app                                        |
+| Developers (Priya) | Contract and conformance tests, listing guide                                                              | Repo docs ([13 Interfaces](13-interfaces.md)) |
+| Operator (Sam)     | Onboarding runbook (section 4), rollback (section 8), moderation steps                                     | Repo docs                                     |
 
-**Support during the pilot:** one WhatsApp business number and email, staffed by me. The response targets are P-17, kept in one table in [19 Maintenance and evolution](19-maintenance-and-evolution.md#1-support-model); this plan doesn't restate them. During hypercare I also send the daily check-in in section 10, but the committed targets don't change.
+**Support during the pilot:** one WhatsApp business number and email, staffed by me with the backup operator. The response targets are P-17 and the coverage is P-28, kept in one table in [19 Maintenance and evolution](19-maintenance-and-evolution.md#1-support-model); journeys, macros and escalation are in the [36 Customer support and success playbook](36-customer-support-and-success-playbook.md). During hypercare I also send the daily check-in in section 10, but the committed targets don't change.
 
-A SEV1 report goes straight to the incident process at any time while listings are live; during the holiday pause nothing is live, so no cover is promised.
+A SEV1 report goes straight to the incident process. During listed businesses' opening hours the 1-hour response applies; at any time, a SEV1 alert left unacknowledged for 30 minutes pauses all listings automatically (P-28).
 
 ## 10. Hypercare
 
@@ -193,14 +195,15 @@ A SEV1 report goes straight to the incident process at any time while listings a
 
 ## 11. Communications plan
 
-| Audience              | Message                                         | Channel                     | When                              | Owner |
-| --------------------- | ----------------------------------------------- | --------------------------- | --------------------------------- | ----- |
-| S0 participants       | Invitation, what to expect, consent             | WhatsApp                    | 2026-11-16                        | Me    |
-| Interviewed barbers   | Thanks, results summary, alpha or pilot invite  | In person, message          | After M-02                        | Me    |
-| Pilot barbers         | Onboarding date, what changes, support contacts | In person, printed guide    | 1 week before their go-live       | Me    |
-| Pilot customers       | How to book by message, privacy notice          | QR code, in app             | At go-live                        | Me    |
-| All pilot users       | Planned maintenance, incident notices           | In app, WhatsApp            | 24 hours before; or as it happens | Me    |
-| Open-source community | Pilot start, findings, v1 decision              | Repo journey, release notes | M-07, M-08                        | Me    |
+| Audience               | Message                                                                                             | Channel                       | When                              | Owner |
+| ---------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------- | --------------------------------- | ----- |
+| S0 participants        | Screener, invitation, disclosure that a person operates the agent, consent form                     | Screener link, WhatsApp       | 2026-11-10 to 2026-11-29          | Me    |
+| Interviewed barbers    | Thanks, results summary, alpha or pilot invite                                                      | In person, message            | After M-02                        | Me    |
+| Pilot barbers          | Onboarding date, what changes, support contacts                                                     | In person, printed guide      | 1 week before their go-live       | Me    |
+| Pilot customers        | How to book by message, privacy notice                                                              | QR code, in app               | At go-live                        | Me    |
+| All pilot users        | Planned maintenance, incident notices                                                               | In app, WhatsApp, status page | 24 hours before; or as it happens | Me    |
+| Public and local press | Holding statement after a SEV1 that affected people (crisis comms in [29](29-go-to-market-plan.md)) | Repo, status page             | Within 24 hours of a SEV1         | Me    |
+| Open-source community  | Pilot start, findings, v1 decision                                                                  | Repo journey, release notes   | M-07, M-08                        | Me    |
 
 ## 12. Post-implementation review template
 
@@ -224,8 +227,9 @@ Held 2 weeks after S2 ends and filed in `docs/audits/`.
 
 ## Revision history
 
-| Version | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                  | Author      |
-| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 1.0     | 2026-11-09 | First baseline                                                                                                                                                                                                                                                                                                                                                                                          | S. Jannisar |
-| 1.1     | 2026-11-09 | Remediation after independent review: S0 is 8 weeks with the new A-01 rule; S1 moved inside Phase 6 after staging exists (WP-6.11); S2 12 weeks; dates from the re-baselined plan (M-07 2027-10-12, M-08 2028-01-18); hosted agents on their own subdomain; `paused` matches `ListingStatus`; support targets link to P-17 in 19; restore wording uses P-15 and the zero-loss rule; G-2 target restated | S. Jannisar |
-| 1.2     | 2026-11-09 | Second remediation after regrade: S1 2027-09-21 to 2027-10-12, S2 2027-10-19 to 2028-01-25 with a 2-week holiday pause (listings paused, no SEV1 cover promised), M-08 2028-02-08; RC 1 and RC 2 window before the pause; rollback triggers now cite the single SEV table in 19                                                                                                                         | S. Jannisar |
+| Version | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Author      |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| 1.0     | 2026-11-09 | First baseline                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | S. Jannisar |
+| 1.1     | 2026-11-09 | Remediation after independent review: S0 is 8 weeks with the new A-01 rule; S1 moved inside Phase 6 after staging exists (WP-6.11); S2 12 weeks; dates from the re-baselined plan (M-07 2027-10-12, M-08 2028-01-18); hosted agents on their own subdomain; `paused` matches `ListingStatus`; support targets link to P-17 in 19; restore wording uses P-15 and the zero-loss rule; G-2 target restated                                                                                                                                                                                    | S. Jannisar |
+| 1.2     | 2026-11-09 | Second remediation after regrade: S1 2027-09-21 to 2027-10-12, S2 2027-10-19 to 2028-01-25 with a 2-week holiday pause (listings paused, no SEV1 cover promised), M-08 2028-02-08; RC 1 and RC 2 window before the pause; rollback triggers now cite the single SEV table in 19                                                                                                                                                                                                                                                                                                            | S. Jannisar |
+| 1.3     | 2026-11-09 | Round 3: expert panel audit, user-to-user reframing, US jurisdiction: pilot in Texas; S0 disclosed, 30 strangers by screener, 10 active weeks with research consent; S1 2028-01-11 to 2028-02-01 with letters of intent or deposits; S2 2028-02-01 to 2028-04-25, M-08 2028-05-09; no holiday pause of live listings (business phone fallback, P-28); standing approval only; C3 capped at 1 business; backup operator, human pentest, human external review and counsel-reviewed legal pack added to go/no-go; RPO restated; recruitment and crisis comms link to 29; support links to 36 | S. Jannisar |

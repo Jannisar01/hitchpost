@@ -3,7 +3,7 @@
 | Field       | Value                                                                                               |
 | ----------- | --------------------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-10                                                                                           |
-| Version     | 1.2                                                                                                 |
+| Version     | 1.3                                                                                                 |
 | Status      | Baselined for Phase 2                                                                               |
 | Date        | 2026-11-09                                                                                          |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                    |
@@ -81,14 +81,16 @@ Both agents run on one machine, bound to `127.0.0.1` (`packages/barber-agent/src
 ```mermaid
 flowchart TB
   dana([Dana]) --> app[Hitchpost app]
+  lee([Jordan, Dana's friend]) --> app
   marcus([Marcus]) --> dash[Barber dashboard]
   priya([Priya's own agent]) -. A2A .-> bizAgent
   sam([Sam, operator]) --> admin[Admin console]
 
   subgraph Hitchpost
-    app --> personal[Personal agent]
+    app --> personal[Personal agent lines]
     dash --> bizAgent[Business agent host]
     personal -- A2A --> bizAgent
+    personal -- "A2A, person to person (UC-11)" --> personal
     personal -- REST --> dir[Directory service]
     bizAgent -- register --> dir
     admin --> dir
@@ -101,18 +103,20 @@ flowchart TB
   personal -- calendar write --> cal[(Dana's calendar)]
 ```
 
+Every person and every business has an agent line. A person's contacts can be businesses or other people: the same A2A transport, cards and approval gate carry both, which is why the personal agent appears on both ends of an A2A edge above (UC-11, Phase 4). How these containers are packed into deployable units is decided in [26 Service architecture](26-service-architecture.md) and [ADR 0019](../decisions/0019-service-architecture.md); module-level design is in [28 Software design description](28-software-design-description.md).
+
 ## 4. Containers
 
-| Container                              | Responsibility                                                                                                                                                                                               | Status                                        | Code                                                       |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------- | ---------------------------------------------------------- |
-| **core**                               | Message types, validators, A2A part helpers. No I/O.                                                                                                                                                         | Built                                         | `packages/core/src/booking.ts`, `packages/core/src/a2a.ts` |
-| **barber-agent** (business agent host) | A2A server per business: agent card, availability, booking, cancel. Owns the book, offers and its audit log.                                                                                                 | Built (availability only)                     | `packages/barber-agent/src/`                               |
-| **my-agent** (personal agent)          | Asks business agents, validates replies, runs the approval gate, polls booking Tasks, writes the calendar event.                                                                                             | Built (ask only)                              | `packages/my-agent/src/`                                   |
-| **e2e**                                | End-to-end tests that start several agents together. Replaces my-agent's dev dependency on barber-agent.                                                                                                     | Phase 2                                       | `packages/e2e/`                                            |
-| **directory**                          | Register, verify and search business agents. REST API. Hosts the admin console.                                                                                                                              | Phase 3                                       | `packages/directory/`                                      |
-| **dashboard** (barber dashboard)       | Web UI for shop owners: services, hours, approval mode, manual-approval queue, mark completed or no-show.                                                                                                    | Phase 3 (setup), Phase 4 (queue and outcomes) | `packages/dashboard/`                                      |
-| **app**                                | Web client for people: contacts are agents, chat, approval sheet, bookings. Hosts the personal agent per person.                                                                                             | Phase 4                                       | `packages/app/`                                            |
-| **ratings**                            | Builds interaction records from both sides' logs (accepted only when both sides' JCS hashes of the offer and decision match; signatures from Phase 6), computes behaviour metrics, accepts verified reviews. | Phase 5                                       | `packages/ratings/`                                        |
+| Container                              | Responsibility                                                                                                                                                                                               | Status                    | Code                                                       |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------- | ---------------------------------------------------------- |
+| **core**                               | Message types, validators, A2A part helpers. No I/O.                                                                                                                                                         | Built                     | `packages/core/src/booking.ts`, `packages/core/src/a2a.ts` |
+| **barber-agent** (business agent host) | A2A server per business: agent card, availability, booking, cancel. Owns the book, offers and its audit log.                                                                                                 | Built (availability only) | `packages/barber-agent/src/`                               |
+| **my-agent** (personal agent)          | Asks business agents and other people's agent lines, validates replies, runs the approval gate, sends the customer contact block, keeps the personal booking copy, writes the calendar event.                | Built (ask only)          | `packages/my-agent/src/`                                   |
+| **e2e**                                | End-to-end tests that start several agents together. Replaces my-agent's dev dependency on barber-agent.                                                                                                     | Phase 2                   | `packages/e2e/`                                            |
+| **directory**                          | Register, verify and search business agents. REST API. Hosts the admin console.                                                                                                                              | Phase 3                   | `packages/directory/`                                      |
+| **dashboard** (barber dashboard)       | Web UI for business owners: services, hours, cancellation terms, bookings with customer contact, mark completed or no-show. Manual-approval queue is Later.                                                  | Phase 4                   | `packages/dashboard/`                                      |
+| **app**                                | PWA for people: contacts are agent lines (people and businesses), chat, approval sheet, bookings, reminders (P-29). App API over REST plus Server-Sent Events; hosts the personal agent line per person.     | Phase 4                   | `packages/app/`                                            |
+| **ratings**                            | Builds interaction records from both sides' logs (accepted only when both sides' JCS hashes of the offer and decision match; signatures from Phase 6), computes behaviour metrics, accepts verified reviews. | Phase 5                   | `packages/ratings/`                                        |
 
 ```mermaid
 flowchart LR
@@ -134,45 +138,52 @@ Rule: `core` depends only on SDK _types_. Nothing depends on `e2e`. Services tal
 
 ### Business agent (barber-agent)
 
-| Component                                            | Role                                                                                                                              | Status  |
-| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `server.ts` `startBarberAgent(name, executor, port)` | Express app: agent card, JSON-RPC handler, JSON error handler, `x-powered-by` off                                                 | Built   |
-| `executor.ts` `BarberExecutor`                       | Parses the request, finds a slot, replies with one Message                                                                        | Built   |
-| `book.ts` `findFreeSlot`                             | Slot search over time ranges, never in the past                                                                                   | Built   |
-| Book loader                                          | Validates the shop's configuration at start (hours, unique services, currency, booked ranges); refuses to start if invalid (D-15) | Phase 2 |
-| Offer store                                          | Offers with `issuedAt`, `expiresAt`, state and `taskId`; held and reserved offers count as taken; caps open holds (P-07)          | Phase 2 |
-| Booking handler                                      | `booking_request` → Task; idempotent on `offerId`; one transaction re-checks the slot and writes (§8)                             | Phase 2 |
-| Approval queue                                       | Manual mode: Task stays `WORKING` with a "waiting for the shop" status until the owner decides or P-03 passes                     | Phase 2 |
-| Audit log                                            | `append(event)` with `contextId`, `taskId`, `offerId`, `messageId`; SQLite table                                                  | Phase 2 |
-| Rate limiter                                         | P-08 per client IP                                                                                                                | Phase 2 |
-| Booking tool adapter                                 | Replaces the local book with an MCP client to the shop's system; writes must be conditional                                       | Phase 6 |
+| Component                                            | Role                                                                                                                                                                                        | Status                   |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| `server.ts` `startBarberAgent(name, executor, port)` | Express app: agent card, JSON-RPC handler, JSON error handler, `x-powered-by` off                                                                                                           | Built                    |
+| `executor.ts` `BarberExecutor`                       | Parses the request, finds a slot, replies with one Message                                                                                                                                  | Built                    |
+| `book.ts` `findFreeSlot`                             | Slot search over time ranges, never in the past                                                                                                                                             | Built                    |
+| Book loader                                          | Validates the shop's configuration at start (hours, unique services, currency, booked ranges); refuses to start if invalid (D-15)                                                           | Phase 2                  |
+| Offer store                                          | Offers with `issuedAt`, `expiresAt`, state and `taskId`; held offers count as taken; de-duplicates on (sender, `messageId`); caps open holds per install key (P-07)                         | Phase 2                  |
+| Booking handler                                      | `booking_request` → Task; idempotent on `offerId` (a UNIQUE violation maps to the `duplicateOf` reply); one transaction re-checks the slot and writes the booking and customer contact (§8) | Phase 2                  |
+| Task rebuilder                                       | At startup sets every non-terminal A2A Task from the `bookings` and `offers` rows (bookings are the source of truth, [08 §4](08-data-design.md#4-storage-by-phase))                         | Phase 2                  |
+| Method policy (proposed, O-1)                        | Request handler wrapper that refuses `ListTasks` and booking `CancelTask`; treats `taskId` as a bearer secret (T-28)                                                                        | Phase 2 (spike)          |
+| Task resolver (proposed, O-2)                        | Finishes a Task after the executor has returned by writing its final status to the TaskStore; needed only for manual approval                                                               | Later (spike in Phase 2) |
+| Approval queue                                       | Manual mode: Task stays `WORKING` with a "waiting for the shop" status until the owner decides or P-03 passes                                                                               | Later                    |
+| Operator relay tool                                  | Pilot: Sam cancels a booking on the business's request and contacts the customer; logged (T-33)                                                                                             | Phase 2                  |
+| Health and shutdown                                  | `/healthz`, Host header allowlist (T-29), SIGTERM drain, structured JSON logs                                                                                                               | Phase 2                  |
+| Audit log                                            | `append(event)` with `contextId`, `taskId`, `offerId`, `bookingId`, `messageId`; SQLite table                                                                                               | Phase 2                  |
+| Rate limiter                                         | P-08 per install key, falling back to client IP                                                                                                                                             | Phase 2                  |
+| Booking tool adapter                                 | Replaces the local book with an MCP client to the shop's system; writes must be conditional                                                                                                 | Phase 6                  |
 
 ### Personal agent (my-agent)
 
-| Component             | Role                                                                                                                            | Status  |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------- |
-| `ask.ts` `askForSlot` | Card discovery and message under one deadline (P-05), no redirects, reply validated and matched                                 | Built   |
-| `main.ts`             | CLI; prints only validated fields and its own errors                                                                            | Built   |
-| Approval gate         | Shows the validated offer with a local deadline (P-09), records the decision, returns an `Approval` (only constructor)          | Phase 2 |
-| `bookOffer(approval)` | The only function that sends `booking_request` (with `returnImmediately: true`); polls `GetTask` until a terminal state or P-04 | Phase 2 |
-| `declineOffer`        | Sends `offer_declined` so the hold is released at once                                                                          | Phase 2 |
-| Audit log             | JSONL file, same event shape as the business side                                                                               | Phase 2 |
-| Directory client      | Resolves a listing, checks the card's interface URL origin against the listing                                                  | Phase 3 |
-| Calendar adapter      | Writes the confirmed booking to the person's calendar                                                                           | Phase 4 |
-| Language front end    | Turns "Thursday after work" into an `availability_request`. Never decides what is booked.                                       | Later   |
+| Component              | Role                                                                                                                                                                              | Status  |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| `ask.ts` `askForSlot`  | Card discovery and message under one deadline (P-05), no redirects, every interface on the origin asked (T-31), reply validated and matched                                       | Built   |
+| `main.ts`              | CLI; prints only validated fields and its own errors                                                                                                                              | Built   |
+| Approval gate          | Shows the validated offer with a local deadline (P-09), records the decision, returns an `Approval` (only constructor)                                                            | Phase 2 |
+| `bookOffer(approval)`  | The only function that sends `booking_request`, with the customer contact block; standing approval completes in one call; polling `GetTask` until P-04 is Later (manual approval) | Phase 2 |
+| Personal booking store | JSONL copy of each confirmed booking with the `bookingToken` sealed at rest (O-8)                                                                                                 | Phase 2 |
+| Install key            | Random key per install, sent in the `Hitchpost-Install-Key` header                                                                                                                | Phase 2 |
+| `declineOffer`         | Sends `offer_declined` so the hold is released at once                                                                                                                            | Phase 2 |
+| Audit log              | JSONL file, same event shape as the business side                                                                                                                                 | Phase 2 |
+| Directory client       | Resolves a listing, checks the card's interface URL origin against the listing                                                                                                    | Phase 3 |
+| Calendar adapter       | Writes the confirmed booking to the person's calendar                                                                                                                             | Phase 4 |
+| Language front end     | Turns "Thursday after work" into an `availability_request`. Never decides what is booked.                                                                                         | Later   |
 
 ### Directory, dashboard, app, ratings
 
-| Component           | Role                                                                                      | Status       |
-| ------------------- | ----------------------------------------------------------------------------------------- | ------------ |
-| Directory API       | `POST /v1/listings`, verification, search, card fetch with SSRF guards                    | Phase 3      |
-| Verification worker | Domain proof (`/.well-known` token or DNS TXT); in person for shops without a site (D-14) | Phase 3      |
-| JWKS registry       | Stores each listing's JWKS URL and verifies card signatures on refresh                    | Phase 6      |
-| Dashboard           | Shop setup, approval mode, manual-approval queue, outcome marking                         | Phase 3 to 4 |
-| App shell           | Contacts list, chat thread, approval sheet, bookings                                      | Phase 4      |
-| Rating ingest       | Builds interaction records from both sides' audit events                                  | Phase 5      |
-| Review service      | Reviews only on verified interactions                                                     | Phase 5      |
-| Moderation          | Report queue, takedown, appeal                                                            | Phase 6      |
+| Component           | Role                                                                                             | Status  |
+| ------------------- | ------------------------------------------------------------------------------------------------ | ------- |
+| Directory API       | `POST /v1/listings`, verification, search, card fetch with SSRF guards                           | Phase 3 |
+| Verification worker | Domain proof (`/.well-known` token or DNS TXT); in person for shops without a site (D-14)        | Phase 3 |
+| JWKS registry       | Stores each listing's JWKS URL and verifies card signatures on refresh                           | Phase 6 |
+| Dashboard           | Business setup, bookings with customer contact, outcome marking; manual-approval queue Later     | Phase 4 |
+| App shell           | Contacts (people and businesses), chat thread, approval sheet, bookings, reminders, Web Push     | Phase 4 |
+| Rating ingest       | Builds interaction records from both sides' audit events                                         | Phase 5 |
+| Review service      | Reviews only on verified interactions                                                            | Phase 5 |
+| Moderation          | Report queue, manual takedown with statement of reasons, appeal, audit trail; auto-suspend Later | Phase 5 |
 
 ## 6. Key sequences
 
@@ -192,6 +203,8 @@ sequenceDiagram
 
 ### Approve and book (Phase 2, UC-02)
 
+The pilot runs standing approval only; the manual branch is Later and shown for completeness.
+
 ```mermaid
 sequenceDiagram
   actor Dana
@@ -199,17 +212,17 @@ sequenceDiagram
   participant P as Personal agent
   participant B as Business agent
   actor Marcus
-  B-->>P: offer {offerId, issuedAt, expiresAt} (Held on B, P-01)
+  B-->>P: offer {offerId, issuedAt, expiresAt, disclosure block} (Held on B, P-01)
   P->>P: log offer_received, local deadline (P-09)
-  P->>G: show validated offer
+  P->>G: show validated offer, business-local time first
   Dana->>G: Approve
   G-->>P: Approval{offerId}
-  P->>B: SendMessage booking_request {offerId}, A2A-Extensions header, returnImmediately
+  P->>B: SendMessage booking_request {offerId, customer block}, A2A-Extensions header
   B->>B: offerId seen before? new Task completes with the same result plus duplicateOf
-  alt standing approval
-    B->>B: one transaction: offer Held and unexpired, slot free, write booking
+  alt standing approval (pilot)
+    B->>B: one transaction: offer Held and unexpired, slot free, write booking and customer contact
     B-->>P: Task COMPLETED {booking_confirmed, bookingToken}
-  else manual approval
+  else manual approval (Later)
     B->>B: offer Reserved (P-02), Task WORKING "waiting for the shop"
     B-->>P: Task WORKING
     B->>Marcus: queue entry in dashboard
@@ -221,10 +234,10 @@ sequenceDiagram
     P->>B: GetTask
     B-->>P: Task COMPLETED {booking_confirmed}
   end
-  P->>P: check confirmation equals offer, log, write calendar
+  P->>P: check confirmation equals offer, store personal booking copy, log, write calendar (Phase 4)
 ```
 
-Failure paths: expired or unknown offer, slot taken, shop declined or shop timeout (P-03) end the Task `REJECTED` with `booking_rejected {reason}`. A decline sends `offer_declined` and releases the hold at once (UC-03). The Task never uses `INPUT_REQUIRED`: in A2A that state asks the _client_ for input, and SDK 1.3 stops processing the task's events there.
+Failure paths: expired or unknown offer, slot taken, cutoff or a paused listing end the Task `REJECTED` with `booking_rejected {reason}`; shop declined and shop timeout (P-03) only exist with manual approval (Later). A decline sends `offer_declined` and releases the hold at once (UC-03). The Task never uses `INPUT_REQUIRED`: in A2A that state asks the _client_ for input, and SDK 1.3 stops processing the task's events there.
 
 ### Directory lookup with origin check (Phase 3, UC-06)
 
@@ -240,6 +253,30 @@ sequenceDiagram
   P->>B: SendMessage ...
 ```
 
+### Two people's agents agree a time (Phase 4, UC-11, proposed)
+
+The same kinds and the same gate work between two people. The difference is that both sides are people, so both approve: Jordan's gate approves what Jordan's agent offers, Dana's gate approves the booking. The exact contract (a person-to-person `offer` carries no price) is set in [13](13-interfaces.md).
+
+```mermaid
+sequenceDiagram
+  actor Dana
+  participant PD as Dana's agent line
+  participant PL as Jordan's agent line
+  actor Jordan
+  Dana->>PD: "Coffee with Jordan next week"
+  PD->>PL: availability_request {earliest, latest} (contact accepted, Phase 4)
+  PL->>PL: free slots from Jordan's calendar, never the calendar itself
+  PL->>Jordan: offer this slot to Dana?
+  Jordan->>PL: Approve
+  PL-->>PD: offer {offerId, start, durationMinutes}
+  PD->>Dana: approval sheet
+  Dana->>PD: Approve
+  PD->>PL: booking_request {offerId}
+  PL-->>PD: Task COMPLETED {booking_confirmed}
+  PD->>PD: write Dana's calendar
+  PL->>PL: write Jordan's calendar
+```
+
 ## 7. Deployment view
 
 | Option                                                               | Fit                | Cost           | Notes                                                                                       |
@@ -248,7 +285,7 @@ sequenceDiagram
 | B. Serverless functions + serverless Postgres                        | Medium             | Lowest at idle | Cold starts threaten p95 under 2 s; long-lived booking Tasks awkward.                       |
 | C. Kubernetes                                                        | Poor at this stage | High           | Operational load out of proportion to one area of barbers.                                  |
 
-**Recommendation: A** (to be recorded as ADR 0014). One region near the pilot area, Postgres for directory, offers, bookings, audit and ratings, a CDN in front of the app and dashboard.
+**Recommendation: A** (ADR 0014, Proposed). One region near the pilot area (Texas), Postgres for directory, offers, bookings, audit and ratings, a CDN in front of the app and dashboard. The units deployed on it follow [ADR 0019](../decisions/0019-service-architecture.md): an **agent host** for business agent lines, an **app backend** for personal agent lines, the App API and notifications, and a **platform service** for directory, ratings, moderation and analytics. Details and extraction triggers are in [26](26-service-architecture.md).
 
 **Tenancy.** Each hosted business agent gets its own subdomain, `<slug>.agents.hitchpost.dev`, served by the shared host. Path routing (`/a/<listingId>/`) was rejected: every shop would share one origin, so origin verification (BR-12) could not tell them apart, and `/.well-known/` is only defined at an origin's root (RFC 8615). Self-hosted agents keep their own origin.
 
@@ -256,36 +293,34 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-  user([Browsers]) --> cdn[CDN: app and dashboard static]
-  user --> api[Container: directory, admin, app API]
-  user --> pa[Container: personal agents, one per signed-in person]
-  ext([External A2A agents]) --> host["Container: business agent host, *.agents.hitchpost.dev"]
-  pa --> host
-  pa --> api
-  host --> rate[Container: ratings]
-  pa --> rate
-  api --> pg[(Postgres)]
+  user([Browsers and installed PWA]) --> cdn[CDN: app and dashboard static]
+  user --> appbe["App backend: personal agent lines, App API, SSE, Web Push, reminders"]
+  ext([External A2A agents]) --> host["Agent host: business agent lines, *.agents.hitchpost.dev"]
+  appbe --> host
+  appbe --> plat["Platform service: directory, ratings, moderation, analytics, admin"]
+  host --> plat
+  appbe --> pg[(Postgres: one role per context, RLS per business)]
   host --> pg
-  rate --> pg
-  pa --> pg
+  plat --> pg
   host --> kms[(KMS: tenant signing keys)]
+  canary([Synthetic canary booking every 5 min]) --> host
 ```
 
 ## 8. Cross-cutting concerns
 
-| Concern                 | Today                                                                                      | Design                                                                                                                                                                                                                                                                                                                                                                                                 |
-| ----------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Time zones**          | UTC only; inputs must carry a zone and are normalised to UTC (`toInstant` in `booking.ts`) | Phase 6 (ADR 0018), before any real booking: hours as minutes of the local day in the shop's IANA zone; slot grid starts from the local opening time; skipped local times give no slot; repeated local times are offered once (first occurrence). Wire format stays UTC.                                                                                                                               |
-| **Clocks**              | Not needed                                                                                 | The business clock is authoritative: offers carry `issuedAt` and `expiresAt`. The personal agent never compares clocks; it sets a local deadline of receive time plus the hold, minus P-09.                                                                                                                                                                                                            |
-| **Idempotency**         | Not needed (availability is read-only)                                                     | SDK 1.3 mints a new Task for every send without a `taskId` (`server/index.js:2801`) and refuses sends to a finished Task (line 2789). So a client that has the `taskId` retries with `GetTask`; a client that lost the response resends, and the business looks up `offerId → taskId` and completes the new Task at once with the same `booking_confirmed` plus `duplicateOf`. Never a second booking. |
-| **Contract extension**  | None                                                                                       | Clients declare `https://hitchpost.dev/ext/contract/v1` in the `A2A-Extensions` request header; SDK 1.3 checks required extensions against that header, not the message body (`server/index.js:2775`), so a client that only lists it in `message.extensions` is refused (AR-7).                                                                                                                       |
-| **Concurrency**         | None                                                                                       | Phase 2: one SQLite transaction re-checks the slot against holds and bookings and writes. Phase 6: the `slot_claims` exclusion table in [08 §4](08-data-design.md#4-storage-by-phase) makes it safe across instances; MCP writes must be conditional.                                                                                                                                                  |
-| **Persistence**         | In memory                                                                                  | Phase 2: SQLite on the business side (SDK `DatabaseTaskStore` plus offers, bookings, audit), JSONL audit on the personal side. Phase 6: Postgres.                                                                                                                                                                                                                                                      |
-| **Errors**              | Server returns `{"error":"bad request"}`; CLI shows only its own messages (`AskError`)     | Error model in [13](13-interfaces.md#5-error-model); never echo remote text to a person.                                                                                                                                                                                                                                                                                                               |
-| **Configuration**       | `PORT` env var in `barber-agent/src/main.ts`                                               | Env vars only (`PUBLIC_URL`, `DATABASE_URL`, limits). Public card URL from config, not the bind address.                                                                                                                                                                                                                                                                                               |
-| **Observability**       | Console logs                                                                               | Phase 2: every audit event carries `contextId`, `taskId`, `offerId`, `messageId`. Phase 6 (NFR-OBS-01): structured JSON logs and OpenTelemetry traces across agents.                                                                                                                                                                                                                                   |
-| **Auth between agents** | None, localhost only                                                                       | Phase 2: server-minted capabilities, `offerId` for booking and `bookingToken` for cancel and reschedule; `contextId` is client-chosen (SDK 1.3 keeps it, `server/index.js:2815`) and used for correlation only. Phase 6 (NFR-SEC-02): signed cards, signed interaction records and per-contact tokens (ADR 0017).                                                                                      |
-| **Abuse limits**        | None                                                                                       | Phase 2: P-07 hold caps and P-08 rate limit per client IP. Phase 6 (NFR-SEC-03): per agent identity, at the edge and in the host.                                                                                                                                                                                                                                                                      |
+| Concern                 | Today                                                                                      | Design                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Time zones**          | UTC only; inputs must carry a zone and are normalised to UTC (`toInstant` in `booking.ts`) | Phase 6 (ADR 0018), before any real booking: hours as minutes of the local day in the shop's IANA zone; slot grid starts from the local opening time; skipped local times give no slot; repeated local times are offered once (first occurrence). Wire format stays UTC.                                                                                                                                                                                                                                                                                                                                  |
+| **Clocks**              | Not needed                                                                                 | The business clock is authoritative: offers carry `issuedAt` and `expiresAt`. The personal agent never compares clocks; it sets a local deadline of receive time plus the hold, minus P-09.                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **Idempotency**         | Not needed (availability is read-only)                                                     | SDK 1.3 mints a new Task for every send without a `taskId` (`server/index.js:2801`) and refuses sends to a finished Task (line 2789). So a client that has the `taskId` retries with `GetTask`; a client that lost the response resends, and the business looks up `offerId → taskId` and completes the new Task at once with the same `booking_confirmed` plus `duplicateOf`. Never a second booking.                                                                                                                                                                                                    |
+| **Contract extension**  | None                                                                                       | Clients declare `https://hitchpost.dev/ext/contract/v1` in the `A2A-Extensions` request header; SDK 1.3 checks required extensions against that header, not the message body (`server/index.js:2775`), so a client that only lists it in `message.extensions` is refused (AR-7).                                                                                                                                                                                                                                                                                                                          |
+| **Concurrency**         | None                                                                                       | Phase 2: one SQLite transaction re-checks the slot against holds and bookings and writes. Phase 6: the `slot_claims` exclusion table in [08 §4](08-data-design.md#4-storage-by-phase) makes it safe across instances; MCP writes must be conditional.                                                                                                                                                                                                                                                                                                                                                     |
+| **Persistence**         | In memory                                                                                  | Phase 2: SQLite (WAL, `BEGIN IMMEDIATE`, Litestream backup) on the business side holding offers, bookings, customer contacts, audit and the SDK `DatabaseTaskStore`. Bookings are the source of truth; Task state is rebuilt from them at startup, because the SDK store writes outside the booking transaction. JSONL audit and personal booking copies on the personal side. Phase 6: Postgres. RPO 0 for a process crash or single-node loss (synchronous commit); region loss RPO 5 minutes (P-15), with confirmed bookings in that window rebuilt from the personal-side `booking_confirmed` copies. |
+| **Errors**              | Server returns `{"error":"bad request"}`; CLI shows only its own messages (`AskError`)     | Error model in [13](13-interfaces.md#5-error-model); never echo remote text to a person. Unknown request kinds get `rejected` `unsupported_kind`; a new reply kind goes only to clients that advertise support.                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Configuration**       | `PORT` env var in `barber-agent/src/main.ts`                                               | Env vars only (`PUBLIC_URL`, `DATABASE_URL`, limits). Public card URL from config, not the bind address.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **Observability**       | Console logs                                                                               | Phase 2: every audit event carries `contextId`, `taskId`, `offerId`, `bookingId`, `messageId`; `/healthz`, graceful shutdown and structured JSON logs. Phase 6 (NFR-OBS-01): OpenTelemetry traces across agents and a synthetic canary booking every 5 minutes as the SLI source.                                                                                                                                                                                                                                                                                                                         |
+| **Auth between agents** | None, localhost only                                                                       | Phase 2: server-minted capabilities, `offerId` for booking and `bookingToken` for cancel and reschedule; `contextId` is client-chosen (SDK 1.3 keeps it, `server/index.js:2815`) and used for correlation only. Phase 6 (NFR-SEC-02): signed cards, signed interaction records and per-contact tokens (ADR 0017).                                                                                                                                                                                                                                                                                         |
+| **Abuse limits**        | None                                                                                       | Phase 2: P-07 hold caps and P-08 rate limit per install key, falling back to client IP (carrier NAT shares addresses); `availability_request` de-duplicated on (sender, `messageId`); Host header allowlist against DNS rebinding. Phase 6 (NFR-SEC-03): per agent identity, at the edge and in the host.                                                                                                                                                                                                                                                                                                 |
 
 ## 9. Architecture decisions
 
@@ -293,21 +328,23 @@ Existing: [0002](../decisions/0002-typescript-monorepo.md) monorepo, [0003](../d
 
 New and proposed:
 
-| ADR  | Title                                                                                                      | Needed by                   |
-| ---- | ---------------------------------------------------------------------------------------------------------- | --------------------------- |
-| 0012 | Booking protocol: Tasks for commitments, holds and reservations, manual approval as `WORKING`, idempotency | Phase 2                     |
-| 0013 | Approval is a type only the gate can create                                                                | Phase 2                     |
-| 0014 | Hosting: one container platform plus managed Postgres, subdomain per tenant                                | Phase 6 (decide in Phase 3) |
-| 0015 | Directory verifies origin; clients enforce card URL origin                                                 | Phase 3                     |
-| 0016 | Compile packages for deployment instead of running `.ts` from `node_modules`                               | Phase 6                     |
-| 0017 | Agent-to-agent authentication: signed cards (JWS over JCS), JWKS, per-tenant KMS keys, per-contact tokens  | Phase 6                     |
-| 0018 | Shop time zones: IANA zone per business, minutes of the local day, UTC on the wire                         | Phase 6                     |
+| ADR  | Title                                                                                                                 | Needed by                   |
+| ---- | --------------------------------------------------------------------------------------------------------------------- | --------------------------- |
+| 0012 | Booking protocol: Tasks for commitments, holds, idempotency; manual approval as `WORKING` (Later) (Accepted, amended) | Phase 2                     |
+| 0013 | Approval is a type only the gate can create                                                                           | Phase 2                     |
+| 0014 | Hosting: one container platform plus managed Postgres, subdomain per tenant                                           | Phase 6 (decide in Phase 3) |
+| 0015 | Directory verifies origin; clients enforce card URL origin                                                            | Phase 3                     |
+| 0016 | Compile packages for deployment instead of running `.ts` from `node_modules`                                          | Phase 6                     |
+| 0017 | Agent-to-agent authentication: signed cards (JWS over JCS), JWKS, per-tenant KMS keys, per-contact tokens             | Phase 6                     |
+| 0018 | Shop time zones: IANA zone per business, minutes of the local day, UTC on the wire (Accepted)                         | Phase 6                     |
+| 0019 | Service architecture: a modular monolith with separate agent hosts (Accepted)                                         | Phase 2                     |
 
 ## Revision history
 
-| Version | Date       | Change                                                                                                                                                                                                                                                                              | Author      |
-| ------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 0.1     | 2026-11-08 | First draft                                                                                                                                                                                                                                                                         | S. Jannisar |
-| 1.0     | 2026-11-09 | Baselined: renumbered into lifecycle order, formal document control, standards conformance                                                                                                                                                                                          | S. Jannisar |
-| 1.1     | 2026-11-09 | Remediation after independent review: 42010 viewpoint catalogue and correspondence rules, corrected booking sequence (Reserved, `WORKING`, polling), deployment with personal agents, ratings, dashboard, subdomain tenancy and signing keys, concurrency, time zones Phase 6       | S. Jannisar |
-| 1.2     | 2026-11-09 | Second remediation after regrade: booking sequence and cross-cutting rows matched to SDK 1.3 behaviour (extension header, duplicate handling, client-chosen contextId); capabilities offerId and bookingToken; interaction records attested by hashes in Phase 5, signed in Phase 6 | S. Jannisar |
+| Version | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | Author      |
+| ------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 0.1     | 2026-11-08 | First draft                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | S. Jannisar |
+| 1.0     | 2026-11-09 | Baselined: renumbered into lifecycle order, formal document control, standards conformance                                                                                                                                                                                                                                                                                                                                                                                                                                                               | S. Jannisar |
+| 1.1     | 2026-11-09 | Remediation after independent review: 42010 viewpoint catalogue and correspondence rules, corrected booking sequence (Reserved, `WORKING`, polling), deployment with personal agents, ratings, dashboard, subdomain tenancy and signing keys, concurrency, time zones Phase 6                                                                                                                                                                                                                                                                            | S. Jannisar |
+| 1.2     | 2026-11-09 | Second remediation after regrade: booking sequence and cross-cutting rows matched to SDK 1.3 behaviour (extension header, duplicate handling, client-chosen contextId); capabilities offerId and bookingToken; interaction records attested by hashes in Phase 5, signed in Phase 6                                                                                                                                                                                                                                                                      | S. Jannisar |
+| 1.3     | 2026-11-09 | Round 3: expert panel audit, user-to-user reframing, US jurisdiction: agent lines between people and businesses, UC-11 person-to-person sequence (proposed); standing approval only in the pilot (manual branch Later); customer contact block and personal booking copy; Task rebuild from bookings, method policy and resolver as proposed O-1 and O-2 designs; install-key caps, dedupe, Host allowlist, health and JSON logs in Phase 2; dashboard Phase 4, moderation Phase 5; three deployables per ADR 0019 with links to 26 and 28; RPO restated | S. Jannisar |

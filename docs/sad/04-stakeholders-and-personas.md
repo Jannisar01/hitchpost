@@ -3,7 +3,7 @@
 | Field       | Value                                                                                                                                              |
 | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-04                                                                                                                                          |
-| Version     | 1.1                                                                                                                                                |
+| Version     | 1.3                                                                                                                                                |
 | Status      | Baselined for Phase 2                                                                                                                              |
 | Date        | 2026-11-09                                                                                                                                         |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                                                                   |
@@ -11,17 +11,23 @@
 
 ## 1. Stakeholder map
 
-| Stakeholder                                           | Interest                                                         | Influence                          | How I engage                                                      |
-| ----------------------------------------------------- | ---------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------------------------- |
-| Customers (Dana)                                      | Book fast, no surprises, privacy                                 | High: adoption decides everything  | 8-week Wizard-of-Oz test (A-01), app feedback, ratings            |
-| Barbers and shop owners (Marcus)                      | More bookings, fewer missed calls, no double-booking, low effort | High: supply side                  | Interviews (A-02), in-person setup, weekly check-ins              |
-| Agent developers (Priya)                              | Get their agent listed, trusted and used                         | Medium: interop and growth         | Open docs, open source, Agent Card spec, contract tests           |
-| Directory operator and moderator (Sam)                | Keep listings real and abuse low                                 | Medium                             | Admin tools (Phase 6), runbooks                                   |
-| Booking platforms (Booksy, Square, Fresha and others) | Keep customers in their ecosystem; API terms                     | High: they control calendar access | Read API terms (A-03), approach as partners, never scrape         |
-| A2A and MCP communities                               | Protocol adoption and correct use                                | Medium: protocol direction         | Follow the spec, report issues, contribute fixes                  |
-| Regulators (privacy, consumer protection)             | Lawful data handling; fair practices                             | High if payments come              | Privacy by design, no payments in v1, legal review before Phase 6 |
-| Contributors                                          | Interesting, well-run open-source project                        | Low to medium                      | CONTRIBUTING, good first issues, fast reviews                     |
-| Hiring managers and peers                             | Evidence of how I lead a build                                   | Low on product, high for me        | Journey, ADRs, audits, honest bug log                             |
+Hitchpost is a network of agent lines between people and businesses ([01 Vision and scope](01-vision-and-scope.md)). The booking stakeholders matter first, because booking proves the protocol. The social-network stakeholders (experts whose agents get consulted, followers and subscribers, assistant vendors) matter from stage L1.
+
+| Stakeholder                                             | Interest                                                                    | Influence                          | How I engage                                                                                         |
+| ------------------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| People booking (Dana)                                   | Book fast, no surprises, privacy                                            | High: adoption decides everything  | 10-week disclosed Wizard-of-Oz (A-01), app feedback, ratings                                         |
+| Businesses (Marcus, barbers first)                      | More bookings, fewer missed calls, no double-booking, low effort            | High: supply side                  | Past-behaviour interviews (A-02), in-person setup, monthly check-ins until the pilot                 |
+| Agent developers (Priya)                                | Get their agent listed, trusted and used                                    | Medium: interop and growth         | Open message contract, JSON Schemas, conformance kit, open source                                    |
+| Directory operator and moderator (Sam), backup operator | Keep listings real and abuse low; quiet on-call                             | Medium                             | Admin tools, runbooks, a named backup before the pilot                                               |
+| Booking platforms (Square, Booksy, Fresha, Vagaro)      | Keep customers in their ecosystem; API terms                                | High: they control calendar access | Open extension they can implement natively; free directory listing for their endpoints; Square first |
+| Assistant vendors (Anthropic, OpenAI, Google)           | Their assistants reaching more services safely                              | High from stage L3                 | MCP gateway and A2A, no lock-in to one vendor                                                        |
+| Experts and creators whose agents others consult (Lena) | Share how they work without leaking what they shouldn't; maybe earn from it | Medium from stage L2               | Sharing scopes per relationship tier, activity log, paid subscriptions at L4                         |
+| Followers and subscribers (Jay)                         | Learn from other people's agents; know what they get and what it costs      | Medium from stage L2               | Clear scopes, prices and cancel-anytime                                                              |
+| A2A and MCP communities                                 | Protocol adoption and correct use                                           | Medium: protocol direction         | Follow the specs, publish the extension, report issues, contribute fixes                             |
+| US regulators (FTC, Texas Attorney General)             | Fair practices, honest AI claims, lawful data handling, real reviews        | High once real people use it       | Legal pack before S1 ([35](35-legal-compliance-and-governance.md)), no payments in v1                |
+| Payments provider (stage L4)                            | Compliant payees, low fraud                                                 | Medium from L4                     | KYC, 1099-K, refunds, click-to-cancel                                                                |
+| Contributors                                            | Interesting, well-run open-source project                                   | Low to medium                      | CONTRIBUTING, scoped good first issues, fast reviews                                                 |
+| Portfolio audience (hiring managers, peers)             | Evidence of how I lead a build                                              | Low on the product                 | Journey, ADRs, audits, honest bug log, kept apart from product-facing pages                          |
 
 ```mermaid
 quadrantChart
@@ -32,64 +38,83 @@ quadrantChart
     quadrant-2 Keep satisfied
     quadrant-3 Monitor
     quadrant-4 Keep informed
-    Customers: [0.9, 0.9]
-    Barbers: [0.85, 0.85]
-    Booking platforms: [0.4, 0.85]
+    People booking: [0.9, 0.9]
+    Businesses: [0.85, 0.85]
+    Booking platforms: [0.45, 0.85]
+    Assistant vendors: [0.35, 0.8]
     Regulators: [0.3, 0.7]
     Agent developers: [0.7, 0.5]
-    A2A community: [0.5, 0.5]
+    Experts consulted: [0.65, 0.45]
+    Followers: [0.6, 0.35]
     Operator: [0.8, 0.45]
-    Contributors: [0.6, 0.25]
+    Contributors: [0.6, 0.2]
 ```
 
 ## 2. Responsibilities (RACI-lite)
 
-R = does the work, A = owns the decision, C = consulted, I = informed. "Me" is the maintainer, who is also Sam until there's a separate operator.
+R = does the work, A = owns the decision, C = consulted, I = informed. "Me" is the maintainer, who is also Sam until there's a separate operator. The full RACI for moderation, incidents and data requests is in [35](35-legal-compliance-and-governance.md).
 
-| Activity                    | Me   | Barbers                                  | Customers            | Contributors | Platforms |
-| --------------------------- | ---- | ---------------------------------------- | -------------------- | ------------ | --------- |
-| Product direction and scope | A, R | C                                        | C                    | I            | I         |
-| Architecture and ADRs       | A, R |                                          |                      | C            |           |
-| Code changes and review     | A    |                                          |                      | R            |           |
-| Listing and verification    | A, R | R (provide details)                      |                      |              | C (API)   |
-| Approving bookings          |      | A for the shop's time (Phase 2 decision) | A for their own time |              |           |
-| Moderation and reports      | A, R | C                                        | R (report)           |              |           |
-| Security response           | A, R | I                                        | I                    | C            | I         |
-| Releases and operations     | A, R | I                                        | I                    | C            |           |
+| Activity                        | Me   | Businesses                             | People                     | Backup operator | Contributors | Platforms |
+| ------------------------------- | ---- | -------------------------------------- | -------------------------- | --------------- | ------------ | --------- |
+| Product direction and scope     | A, R | C                                      | C                          |                 | I            | I         |
+| Architecture and ADRs           | A, R |                                        |                            |                 | C            |           |
+| Code changes and review         | A    |                                        |                            |                 | R            |           |
+| Listing and verification        | A, R | R (provide details)                    |                            |                 |              | C (API)   |
+| Approving bookings              |      | A (standing approval by opening hours) | A for their own time       |                 |              |           |
+| Marking outcomes                |      | R (Completed or NoShow)                | R ("Did it go as booked?") | A (disputes)    |              |           |
+| Moderation and reports          | A, R | C                                      | R (report)                 | R               |              |           |
+| Security response and incidents | A, R | I                                      | I                          | R               | C            | I         |
+| Releases and operations         | A, R | I                                      | I                          | C               | C            |           |
+| Sharing scopes on an agent (L2) |      | A for their agent                      | A for their agent          |                 |              |           |
 
-One open decision for Phase 2: does Marcus approve each booking, or do opening hours count as his standing approval? My working answer is standing approval by default, with a per-shop switch for manual approval. It gets confirmed in the A-02 interviews.
+In the pilot, opening hours are the business's standing approval. Manual approval of each booking is designed but comes later ([01](01-vision-and-scope.md) section 7).
 
 ## 3. Personas
 
-### Dana, customer
+### Dana, person booking
 
-- **Context:** 34, works hybrid, books a haircut every 3 to 4 weeks, usually remembers late. Has an assistant app on her phone. Because she books only every 3 to 4 weeks, the A-01 test in [03](03-business-case.md) runs 8 weeks: long enough to see two of her bookings.
-- **Goals:** get a slot that fits after work without calling; know it's really booked.
-- **Pains:** phone calls during work hours; every shop uses a different app; booking forms on a phone; finding out the slot was gone.
-- **What she needs from Hitchpost:** one message, one clear offer, one tap to approve, confirmation she can trust.
-- **What would make her leave:** a wrong booking, or approvals that feel like more work than calling.
+- **Context:** 34, works hybrid, books a haircut every 3 to 4 weeks, usually remembers late. Has an assistant app on her phone and her barber's booking app. Because she books only every 3 to 4 weeks, the A-01 test in [03](03-business-case.md) runs 10 weeks: long enough to see at least two of her bookings.
+- **Goals:** get a slot that fits after work without calling; know it's really booked; find a time with a friend without a long text thread (UC-11).
+- **Pains:** phone calls during work hours; every business uses a different app; finding out the slot was gone.
+- **What she needs from Hitchpost:** one message, one clear offer showing the business, price, cancellation terms and an absolute "held until" time, one tap to approve, a confirmation she can trust, and a reminder before the appointment.
+- **What would make her leave:** a wrong booking, or approvals that feel like more work than the app she already has.
 
-### Marcus, barber and shop owner
+### Marcus, barber and business owner
 
 - **Context:** 41, owns a 2-chair shop, cuts all day, uses a booking app his customers mostly ignore. Phone rings while he's cutting.
 - **Goals:** a full book, fewer no-shows, no double-bookings, no extra admin.
-- **Pains:** missed calls equal missed bookings; booking-app fees; customers who don't show.
-- **What he needs:** listing in minutes, bookings landing in the tool he already uses, nothing to watch during the day.
-- **What would make him leave:** one double-booking, or having to manage yet another inbox.
+- **Pains:** missed calls equal missed bookings; booking-app fees; customers who don't show; strangers he knows nothing about.
+- **What he needs:** an agent line live in minutes, bookings landing in the tool he already uses, the customer's name and phone with each booking, nothing to watch during the day, and a flat price that doesn't charge him for his own regulars.
+- **What would make him leave:** one double-booking, having to copy bookings by hand, or having to manage yet another inbox.
 
 ### Priya, agent developer
 
 - **Context:** 29, builds agents for small businesses as a freelancer. Knows A2A.
 - **Goals:** list her clients' agents, have them found and trusted, prove they behave.
-- **Pains:** no directory where local-business agents get discovered; no way to show her agent is reliable.
-- **What she needs:** a clear message contract, a test harness, a simple registration and verification flow, and visible reputation.
+- **Pains:** no directory where local-business agents get discovered; no way to show her agent is reliable; contracts that only make sense to one SDK.
+- **What she needs:** a language-neutral message contract with JSON Schemas, a conformance kit she can point at her agent's URL, a simple registration and verification flow, and visible reputation.
 
 ### Sam, operator and moderator
 
-- **Context:** the maintainer at launch; later a part-time role.
-- **Goals:** real listings only, fast response to reports, quiet on-call.
+- **Context:** the maintainer at launch, with a named backup operator for the pilot; later a part-time role.
+- **Goals:** real listings only, fast response to reports, quiet on-call within published hours.
 - **Pains:** fake listings, spam agents, unclear evidence when handling disputes.
-- **What Sam needs:** an admin view of listings and reports, audit logs from both sides of a dispute, rate-limit and block controls.
+- **What Sam needs:** an admin view of listings and reports, audit logs from both sides of a dispute, rate-limit and block controls, a one-command pause.
+
+### Lena, expert whose agent others consult (stages L1 to L4)
+
+- **Context:** 38, structural engineer who also does research. Uses Claude for analysis and ChatGPT for drafting, each tuned to her own way of working.
+- **Goals:** let people learn how she approaches problems without her spending hours answering the same questions; see who asked what; later, earn from paid consults.
+- **Pains:** client details are confidential; her methods could be scraped; someone could pose as her or her agent.
+- **What she needs:** her agents linked as one agent family under her verified identity; an owner profile saying what each agent is for; sharing scopes per tier (public, follower, friend, subscriber); an activity log; block and revoke.
+- **What would make her leave:** one leak of something she didn't share, or an impersonator.
+
+### Jay, follower and later subscriber (stages L2 to L4)
+
+- **Context:** 26, junior engineer. Follows Lena's agent to learn how she works; asks his own assistant to consult it.
+- **Goals:** get useful answers from people he can't reach directly; know exactly what he gets at each tier and what it costs.
+- **Pains:** paywalls with unclear value; subscriptions that are hard to cancel.
+- **What he needs:** a clear view of what Lena's agent shares with followers vs subscribers, the price, and cancel-anytime in one step.
 
 ## 4. Journeys
 
@@ -119,11 +144,11 @@ journey
       Messages "cut Thursday after 5" in the app: 5: Dana
       Her agent asks Marcus's agent: 5: Dana
     section Decide
-      Sees one offer, Thursday 5:30, $30: 5: Dana
+      Sees one offer, Thursday 5:30, $30, with the hold time: 5: Dana
       Taps approve: 5: Dana
     section Done
-      Booking lands in Marcus's book: 5: Marcus
-      Calendar entry and confirmation: 5: Dana
+      Booking lands in Marcus's book with her name: 5: Marcus
+      Calendar entry, confirmation and a reminder: 5: Dana
 ```
 
 ### Marcus: today vs with Hitchpost
@@ -136,10 +161,10 @@ flowchart LR
         A4[Booking app request] --> A5[Checks app between cuts]
     end
     subgraph With Hitchpost
-        B1[Customer's agent asks] --> B2[Shop agent offers a free slot from his book]
+        B1[Customer's agent asks] --> B2[Business agent offers a free slot from his book]
         B2 --> B3{Customer approves?}
-        B3 -- yes --> B4[Booking written to his tool]
-        B3 -- no --> B5[Nothing changes]
+        B3 -- yes --> B4[Booking written to his tool with the customer's name and phone]
+        B3 -- no --> B5[Hold released, nothing changes]
         B4 --> B6[Both sides get a record]
     end
 ```
@@ -148,7 +173,7 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-    P1[Reads the message contract in 13 interfaces] --> P2[Runs the conformance tests locally]
+    P1[Reads the message contract and JSON Schemas in 13 interfaces] --> P2[Runs the conformance kit against her agent's URL]
     P2 --> P3[Publishes the Agent Card at the well-known URL]
     P3 --> P4[Registers the listing in the directory]
     P4 --> P5[Verification: well-known token or DNS TXT record on the business domain]
@@ -159,14 +184,30 @@ flowchart TD
     P8 --> P9[Reputation builds from verified interactions]
 ```
 
+### Jay consults Lena's agent (stage L2 to L4, described, not yet designed)
+
+```mermaid
+flowchart TD
+    J1[Jay's assistant finds Lena's agent in the directory] --> J2[Reads her owner profile and what followers can ask]
+    J2 --> J3[Sends a follow request]
+    J3 --> J4{Lena's rule: open follow or approve?}
+    J4 -- approved --> J5[Jay's agent asks within the follower scope]
+    J4 -- declined --> J6[Only public profile stays visible]
+    J5 --> J7[Lena's agent answers with scoped knowledge only]
+    J7 --> J8[Lena sees the question in her activity log]
+    J5 --> J9{Wants more than followers get?}
+    J9 -- yes --> J10[Subscribes, stage L4, cancel anytime]
+```
+
 ## 5. Supersedes and related
 
 Supersedes "Who it is for" in [concept.md](../concept.md). Related: [01 vision and scope](01-vision-and-scope.md), [03 business case](03-business-case.md), [06 use cases](06-use-cases.md).
 
 ## Revision history
 
-| Version | Date       | Change                                                                                                                                         | Author      |
-| ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 0.1     | 2026-11-08 | First draft                                                                                                                                    | S. Jannisar |
-| 1.0     | 2026-11-09 | Baselined: renumbered into lifecycle order, formal document control, standards conformance                                                     | S. Jannisar |
-| 1.1     | 2026-11-09 | Remediation after independent review: A-01 test length (8 weeks) tied to Dana's booking frequency; Priya's verification step matches FR-DIR-01 | S. Jannisar |
+| Version | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                      | Author      |
+| ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 0.1     | 2026-11-08 | First draft                                                                                                                                                                                                                                                                                                                                                                                                                 | S. Jannisar |
+| 1.0     | 2026-11-09 | Baselined: renumbered into lifecycle order, formal document control, standards conformance                                                                                                                                                                                                                                                                                                                                  | S. Jannisar |
+| 1.1     | 2026-11-09 | Remediation after independent review: A-01 test length (8 weeks) tied to Dana's booking frequency; Priya's verification step matches FR-DIR-01                                                                                                                                                                                                                                                                              | S. Jannisar |
+| 1.3     | 2026-11-09 | Round 3: expert panel audit, user-to-user reframing, US jurisdiction: stakeholders for a network of agent lines (assistant vendors, US regulators, platforms as partners, backup operator); new personas Lena (expert whose agent is consulted) and Jay (follower, later subscriber); standing approval decided for the pilot; outcome marking in the RACI; A-01 at 10 weeks; Priya gets JSON Schemas and a conformance kit | S. Jannisar |
