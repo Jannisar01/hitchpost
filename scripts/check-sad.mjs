@@ -31,11 +31,13 @@ for (const f of docs) {
 }
 
 // 2. IDs: everything referenced must be defined somewhere (table first column, heading or bold list item).
-const ID = String.raw`(FR-[A-Z]+-\d{2}|NFR-[A-Z0-9]+-\d{2}|UC-\d{2}|A-\d{2}|R-\d{2}|T-\d{2}|D-\d{2}|G-\d|BR-\d{2}|QAS-\d{2}|WP-\d\.\d+|M-\d{2}|DQ-\d{2}|E-\d{2}|ALT-[A-D]|P-\d{2}|TC-\d{2,3}|CR-\d|UP-\d|UT-\d{1,2}|AR-\d|SP-\d|TO-\d|NR-\d)`;
+const ID = String.raw`(FR-[A-Z]+-\d{2}|NFR-[A-Z0-9]+-\d{2}|UC-\d{2}|A-\d{2}|R-\d{2}|T-\d{2}|D-\d{2}|G-\d|BR-\d{2}|QAS-\d{2}|WP-\d\.\d+|M-\d{2}|DQ-\d{2}|E-\d{2}|ALT-[A-D]|P-\d{2}|TC-\d{2,3}|CR-\d|UP-\d|UT-\d{1,2}|AR-\d|SP-\d|TO-\d|NR-\d|I-\d{2}|DP-\d{2}|US-\d{2}|BR-REQ-\d{2}|RB-\d|SF-\d{2}|EX-\d|BO-\d|DL-\d{2}|EV-\d)`;
 const defRes = [
   new RegExp(String.raw`^\|\s*\**\`?${ID}\`?\**[\s|.:(]`),
   new RegExp(String.raw`^#{2,4}\s+(?:\d+(?:\.\d+)*\.?\s+)?\**${ID}\b`),
   new RegExp(String.raw`^- \*\*${ID}`),
+  new RegExp(String.raw`^\*\*${ID}\b`), // bold paragraph definitions, e.g. user stories
+  new RegExp(String.raw`\|\s*${ID}:\s`), // "US-50: As Lena, ..." inside a table cell
 ];
 const defined = new Set();
 const refs = [];
@@ -153,6 +155,42 @@ for (const f of files)
       if (phases.length && !phases.includes(phase))
         fail(f, n, `capability placed in Phase ${phases.join("/")}, phase map says ${phase}`);
     }
+
+// 6. Milestone dates and the budget. The project plan (16) is the source; other documents must agree.
+const plan = read(join(SAD, "16-project-plan.md"));
+const milestones = new Map();
+for (const m of plan.matchAll(/^\|\s*(M-\d{2})[^|]*\|\s*(\d{4}-\d{2}-\d{2})\s*\|/gm))
+  milestones.set(m[1], m[2]);
+const totalToV1 = plan.match(/\*\*Total to v1\*\*[^$]*\$([\d,]+)/)?.[1];
+if (!milestones.size)
+  fail("16-project-plan.md", 0, "no milestone table found (| M-nn ... | yyyy-mm-dd |)");
+if (!totalToV1) fail("16-project-plan.md", 0, 'no "**Total to v1**" budget line found');
+for (const f of files) {
+  if (f.endsWith("16-project-plan.md")) continue;
+  for (const { l, n } of bodyLines(read(f))) {
+    // A line that names exactly one milestone and gives exactly one date must give that milestone's date.
+    const ms = [...new Set([...l.matchAll(/\bM-\d{2}\b/g)].map((m) => m[0]))];
+    const dates = [...l.matchAll(/\b20\d{2}-\d{2}-\d{2}\b/g)].map((m) => m[0]);
+    if (
+      ms.length === 1 &&
+      dates.length === 1 &&
+      milestones.has(ms[0]) &&
+      /latest|at the latest/i.test(l) === false
+    ) {
+      if (dates[0] !== milestones.get(ms[0]))
+        fail(f, n, `${ms[0]} is ${milestones.get(ms[0])} in 16, this line says ${dates[0]}`);
+    }
+    if (totalToV1 && /(total|budget) to v1|with (20% )?contingency/i.test(l)) {
+      const amounts = [...l.matchAll(/\$([\d,]{5,})/g)].map((m) => m[1]);
+      if (amounts.length && !amounts.includes(totalToV1))
+        fail(
+          f,
+          n,
+          `budget to v1 with contingency is $${totalToV1} in 16, this line says $${amounts.join("/$")}`,
+        );
+    }
+  }
+}
 
 if (problems.length) {
   console.error(problems.join("\n"));
