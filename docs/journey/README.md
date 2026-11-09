@@ -148,13 +148,35 @@ Before Phase 2, I wanted the whole system designed end to end, not just the next
 ### Decisions I made during the review
 
 - **Contract version lives in the agent card, not in every message.** The requirements draft said otherwise. Declaring it once on the card is simpler and matches how A2A agents already advertise what they support.
-- **Timing defaults:** an offer holds a slot for 10 minutes, a shop's manual approval waits 30 minutes, there's no cancellation cutoff unless a shop sets one, and each sender is limited to 60 requests a minute. Each has its reasoning in [09 Interfaces](../sad/09-interfaces.md#timing-defaults-phase-2).
+- **Timing defaults:** an offer holds a slot for 10 minutes, a shop's manual approval waits 30 minutes, there's no cancellation cutoff unless a shop sets one, and each sender is limited to 60 requests a minute. Each has its reasoning in [the normative parameter register](../sad/00-document-control.md#10-normative-parameters-and-phase-map).
 - **Standing approval for shops by default**, with a switch for owners who want to approve each booking. To be confirmed in barber interviews (assumption A-02).
 
 ### What it produced
 
 Goals, 8 assumptions with kill criteria, 12 risks, about 50 requirements with a traceability matrix, 10 use cases, C4 architecture and Phase 2 sequences, a domain model, a versioned message contract, 22 threats, a test strategy mapped to requirements, deployment and incident plans, and a 13-item tech-debt register. Seven new decision records (0012 to 0018) are proposed in the design and get written as each phase reaches them.
 
+---
+
+## 2026-11-09 · Raising the design to an official SA&D package
+
+I set the bar at what a top-percentile analyst would hand an assessor: aligned to ISO/IEC/IEEE 29148, 42010, IEEE 1016, 29119-3 and 25010, with formal document control, and bound as a [PDF](../sad/Hitchpost-System-Analysis-and-Design.pdf) built from the Markdown source.
+
+### What I did
+
+- **Gap-audited the twelve documents against the standards** and added the nine that were missing: feasibility study, process and behaviour models (DFDs, decision tables, state machines), data dictionary with a CRUD matrix, quality attribute scenarios, UI design, project plan, transition plan, glossary and document control. Renumbered all 21 into lifecycle order.
+- **Had the package graded three times by fresh, independent assessors**, each a separate Claude Code agent with no memory of earlier rounds, plus an engineering reviewer checking the design against the code and SDK. I verified every SDK claim against the source before acting on it. Grades went C+, then B-, then B- after a full-depth read. ([review record](../audits/2026-11-09-sad-review.md))
+
+### Key moments
+
+- **The first grade was a C+, and it was fair.** The breadth was there, but documents contradicted each other on values and phases, and the manual-approval design depended on an A2A task state that the SDK stops processing. A package that claims consistency checks and then contradicts itself is worse than one that claims nothing.
+- **I fixed the cause, not the symptoms.** Instead of correcting values one by one, I made the calls once in a decision sheet: a normative parameter register (P-01 to P-20) and a phase map in document control that every other document cites. Then I built the check into the repo: `pnpm docs:check` runs in CI and fails on undefined IDs, broken links, values that drift from the register and phases that disagree with the map.
+- **The second round found SDK behaviour no document had checked.** Required extensions are read from a request header, retries create new tasks, and the client chooses its own contextId, so contextId could never be the authority to cancel a booking. I moved authority to server-minted tokens and redesigned retries around what the SDK actually does.
+- **I stopped polishing paper at the right time.** The third assessor read everything in full, confirmed the arithmetic and every SDK citation, and still found deeper protocol gaps, including one security issue: standard A2A methods would let anyone list completed tasks. The grade held at B- because each round found a new layer, not old problems. Its own conclusion was that the next grade needs evidence. So the remaining findings are tracked openly, and the next step is a protocol spike that proves the design against SDK 1.3 in code.
+
 ### Next
+
+Phase 2 protocol spike: run the duplicate-retry, delayed-completion and restart test cases against SDK 1.3, close the two high findings (task method exposure, finishing a waiting task), then update the package to 1.3. After that, Phase 2: the approval gate.
+
+### Next (as planned before this session)
 
 Phase 2: the approval gate. Offer, then my yes or no, then a booking, with stored offers, an audit log on both sides and tests proving nothing books without approval.
