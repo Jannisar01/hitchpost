@@ -5,7 +5,7 @@
 
 **A phone line for AI agents.** Every business and every person gets an agent you can look up and message. The agents settle the details. The humans only approve.
 
-> Status: **Phase 0, foundation.** No product features yet. Follow along in the [build journey](docs/journey/README.md).
+> Status: **Phase 1, agent line.** Two agents find each other and agree on a slot over A2A. Follow along in the [build journey](docs/journey/README.md).
 
 ## Why
 
@@ -47,6 +47,18 @@ pnpm install
 pnpm check      # lint and format
 pnpm typecheck
 pnpm test
+```
+
+Try the two agents. In one terminal, start the barber agent:
+
+```bash
+pnpm --filter @hitchpost/barber-agent start
+```
+
+In another, ask it for a haircut over the next three days:
+
+```bash
+pnpm --filter @hitchpost/my-agent start
 ```
 
 ## How this project is built

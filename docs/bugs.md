@@ -2,6 +2,6 @@
 
 Every real problem the project ran into: what happened, the root cause, the fix and what changed to stop it happening again. Newest first.
 
-| Date | Area | Problem                               | Root cause | Fix | Prevention |
-| ---- | ---- | ------------------------------------- | ---------- | --- | ---------- |
-|      |      | _No bugs yet. Phase 0 is setup only._ |            |     |            |
+| Date       | Area         | Problem                                                                                               | Root cause                                                                                                                                                                     | Fix                                                    | Prevention                                                                                                               |
+| ---------- | ------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| 2026-11-08 | barber-agent | `BarberExecutor` crashed on load: `ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX`. Type check failed with TS1294. | The constructor used the `private readonly book` parameter shorthand. Node runs our TypeScript by stripping types, and that shorthand generates code, so it can't be stripped. | Declared the field and assigned it in the constructor. | `erasableSyntaxOnly` in tsconfig already flags this at type check, and CI runs the type check, so it can't reach `main`. |
