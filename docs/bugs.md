@@ -5,7 +5,8 @@ Every real problem the project ran into: what happened, the root cause, the fix 
 ## 2026-11-09 · Found by the first CI run on GitHub
 
 ### CI failed on a byte-order mark in package.json
-- **Problem:** the first pull request's CI stopped at the pnpm setup step with `SyntaxError: Unexpected token '﻿'` reading `package.json`.
+
+- **Problem:** the first pull request's CI stopped at the pnpm setup step with `SyntaxError: Unexpected token (U+FEFF, the byte-order mark)` reading `package.json`.
 - **Root cause:** I had edited `package.json` (and six other files) with Windows PowerShell 5.1, which writes UTF-8 with a byte-order mark. pnpm on my machine tolerated it; the pnpm setup action in CI parses the file strictly. Nothing local caught it because every local tool was lenient.
 - **Fix:** stripped the mark from all seven files.
 - **Prevention:** `scripts/check-encoding.mjs` now runs inside `pnpm check` and fails on any tracked file that starts with a byte-order mark; it was tested against a planted one. Lesson: the first real CI run is a test in itself, which is why pushing mattered.
