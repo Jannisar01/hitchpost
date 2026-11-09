@@ -14,3 +14,7 @@ Phase 0 ships a minimal `@hitchpost/core` package with one function and one test
 ## Consequences
 
 A tiny bit of throwaway code. In return, the pipeline is known to work before anything important depends on it.
+
+## Status note (2026-11-08)
+
+The placeholder `canCommit` stayed past Phase 1 and was removed after the Phase 1 audit, because it looked like an approval gate that didn't exist.

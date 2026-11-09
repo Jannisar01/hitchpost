@@ -5,15 +5,24 @@
 
 **A phone line for AI agents.** Every business and every person gets an agent you can look up and message. The agents settle the details. The humans only approve.
 
-> Status: **Phase 1, agent line.** Two agents find each other and agree on a slot over A2A. Follow along in the [build journey](docs/journey/README.md).
+> Status: **Phase 1, agent line.** My agent asks, and the barber agent offers a free slot over A2A. Approving and booking come in Phase 2. Follow along in the [build journey](docs/journey/README.md).
+
+## What works today
+
+| Works                                                       | Not yet                                     |
+| ----------------------------------------------------------- | ------------------------------------------- |
+| Barber agent with an A2A Agent Card and an appointment book | Approving an offer and booking it           |
+| My agent asks for a slot and validates the offer            | Audit log of decisions                      |
+| Strict validation of everything another agent sends         | Directory, client app, ratings              |
+| 22 tests, including end to end over A2A                     | MCP tools, real booking systems, time zones |
 
 ## Why
 
 Today AI agents connect to software, not to each other. When your agent wants to book you a haircut, it has to fill in a website form built for humans, while the barber's agent, which knows the calendar, never hears from it.
 
-Hitchpost connects them directly:
+Hitchpost connects them directly. The target flow (steps 3 and 4 land in Phase 2):
 
-1. You message the barber's agent: _"Cut on Thursday after 5?"_
+1. Your agent messages the barber's agent: _"Cut on Thursday after 5?"_
 2. The barber's agent checks the book and offers _Thursday 5:30_.
 3. **You approve or decline.** Nothing is booked without your yes.
 4. Your agent confirms and puts it on your calendar.
@@ -23,8 +32,8 @@ Read the full [concept](docs/concept.md) and the [product and business brief](do
 ## What it is built on
 
 - **[A2A](https://a2a-protocol.org)** for agent-to-agent messaging. Hitchpost doesn't invent a protocol.
-- **[MCP](https://modelcontextprotocol.io)** for each agent's own tools (calendars, booking systems).
-- **Hitchpost adds** what's missing: a public directory of business agents, a mandatory human approval gate and ratings built from verified interactions.
+- **[MCP](https://modelcontextprotocol.io)** for each agent's own tools (calendars, booking systems). Planned: Phase 1 uses an in-memory appointment book.
+- **Hitchpost will add** what's missing: a public directory of business agents, a human approval gate logged for both sides, and ratings built from verified interactions.
 
 ## Roadmap
 

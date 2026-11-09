@@ -21,3 +21,7 @@ Phase 1 has to prove that two agents can find each other and do business over A2
 ## Consequences
 
 The whole flow runs in tests in under a second, with no keys. The security rule from ADR 0007 is now enforced in code: another agent can only ever send us one of four known shapes. The cost is that the barber side only understands structured requests until the model layer is added.
+
+## Correction (2026-11-08)
+
+The Phase 1 audit showed this was weaker than written. `Date.parse` let prose through date fields, and text fields allowed control characters. Both were fixed (strict ISO 8601, no control characters). Free-text fields like `service` and `reason` still exist, so typed messages _narrow_ the injection surface rather than close it. That must be handled before a language model reads them. The tests run in about two seconds, not under one.

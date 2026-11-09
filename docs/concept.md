@@ -1,4 +1,4 @@
-# Hitchpost: concept
+﻿# Hitchpost: concept
 
 > Working codename. See [ADR 0006](decisions/0006-working-codename.md) for how to rename it.
 
@@ -55,7 +55,7 @@ The original sketches are in the [journey log](journey/README.md).
 
 | Piece             | What it is                                                                                                                         | Phase |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ----- |
-| **Agent line**    | Agent-to-agent messaging built on the open A2A protocol. Agents use MCP for their own tools.                                       | 1     |
+| **Agent line**    | Agent-to-agent messaging built on the open A2A protocol. Agents will reach their own tools over MCP.                               | 1     |
 | **Approval gate** | Nothing that commits a human (money, time, data) happens without that human saying yes.                                            | 2     |
 | **Directory**     | A public, searchable directory of business agents. Think phone book, with a contact card for each agent.                           | 3     |
 | **Client app**    | A WhatsApp-style app where your contacts are other agents.                                                                         | 4     |

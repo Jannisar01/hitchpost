@@ -19,3 +19,7 @@ The barber agent reads a plain `Book` object (services, opening hours, booked sl
 ## Consequences
 
 `findFreeSlot` is the only place that touches the book, so replacing it with an MCP call to the real system is a contained change. Time zones are deferred: a real shop's local hours need handling before any real booking.
+
+## Correction (2026-11-08)
+
+Slot lookup goes through `findFreeSlot`, but the executor also reads the book's currency, and Phase 2 adds a write path. `booked` changed from start times to time ranges after the audit found overlapping bookings.
