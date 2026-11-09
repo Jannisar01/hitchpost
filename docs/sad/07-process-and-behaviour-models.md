@@ -3,7 +3,7 @@
 | Field       | Value                                                                                                                 |
 | ----------- | --------------------------------------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-07                                                                                                             |
-| Version     | 1.1                                                                                                                   |
+| Version     | 1.2                                                                                                                   |
 | Status      | Baselined for Phase 2                                                                                                 |
 | Date        | 2026-11-09                                                                                                            |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                                      |
@@ -42,12 +42,12 @@ flowchart LR
   operator[Operator]
   hp([0 Hitchpost])
 
-  person -- "request, approval, rating, report" --> hp
-  hp -- "offer, confirmation, booking list" --> person
+  person -- "request, approval, cancel or reschedule, rating, report" --> hp
+  hp -- "offer, confirmation, cancel result, booking list" --> person
   owner -- "listing, services, hours, manual decision" --> hp
   hp -- "booking notice, verification result" --> owner
-  peer -- "availability request, booking request" --> hp
-  hp -- "offer, booking result" --> peer
+  peer -- "availability request, offer declined, reschedule question, booking request, cancel request" --> hp
+  hp -- "offer, booking result, cancel result" --> peer
   hp -- "slot query, booking write" --> booking
   booking -- "free slots, booking id" --> hp
   hp -- "calendar event" --> calendar
@@ -101,6 +101,14 @@ flowchart LR
   p3 -- "offer" --> person
   person -- "approval" --> p3
   p3 -- "offer declined" --> p2
+  peer -- "offer declined" --> p2
+  person -- "cancel or reschedule" --> p3
+  p3 -- "reschedule question" --> p2
+  peer -- "reschedule question" --> p2
+  p3 -- "cancel request" --> p4
+  peer -- "cancel request" --> p4
+  p4 -- "cancel result" --> p3
+  p3 -- "cancel result" --> person
   p3 -- "decision" --> d3
   p3 -- "booking request with approval" --> p4
   peer -- "booking request" --> p4
@@ -115,6 +123,7 @@ flowchart LR
   p4 -- "result event" --> d3
   p4 -- "booking result" --> p3
   p4 -- "booking result" --> peer
+  p4 -- "cancel result" --> peer
   p3 -- "confirmation" --> person
   p3 -- "calendar event" --> cal
   d3 -- "own bookings" --> p3
@@ -149,15 +158,15 @@ flowchart LR
 
 Processes are logical. Which container runs each one is in [10](10-architecture.md); one container can run several processes.
 
-| Store | Holds                                                | Owner                         | Status                                          |
-| ----- | ---------------------------------------------------- | ----------------------------- | ----------------------------------------------- |
-| DS1   | Issued offers with `issuedAt`, `expiresAt` and state | Business agent                | Phase 2                                         |
-| DS2   | Bookings as time ranges                              | Business agent or shop system | Built in memory (`Book.booked`)                 |
-| DS3   | Append-only audit events, with correlation fields    | Each side keeps its own       | Phase 2                                         |
-| DS4   | Directory listings                                   | Directory                     | Phase 3                                         |
-| DS5   | Interaction records signed by both sides             | Ratings service               | Phase 5                                         |
-| DS6   | Reports and moderation actions                       | Directory                     | Phase 5 to 6                                    |
-| DS7   | Services and opening hours                           | Business agent                | Built in memory (`Book.services`, `Book.hours`) |
+| Store | Holds                                                                                  | Owner                         | Status                                          |
+| ----- | -------------------------------------------------------------------------------------- | ----------------------------- | ----------------------------------------------- |
+| DS1   | Issued offers with `issuedAt`, `expiresAt` and state                                   | Business agent                | Phase 2                                         |
+| DS2   | Bookings as time ranges                                                                | Business agent or shop system | Built in memory (`Book.booked`)                 |
+| DS3   | Append-only audit events, with correlation fields                                      | Each side keeps its own       | Phase 2                                         |
+| DS4   | Directory listings                                                                     | Directory                     | Phase 3                                         |
+| DS5   | Interaction records attested by both sides' matching audit hashes (signatures Phase 6) | Ratings service               | Phase 5                                         |
+| DS6   | Reports and moderation actions                                                         | Directory                     | Phase 5 to 6                                    |
+| DS7   | Services and opening hours                                                             | Business agent                | Built in memory (`Book.services`, `Book.hours`) |
 
 ## 5. Level 2 DFD: P4 Book appointment
 
@@ -178,9 +187,17 @@ flowchart LR
   p43([P4.3 Await shop decision])
   p44([P4.4 Recheck slot and write booking])
   p45([P4.5 Reply and log])
+  p46([P4.6 Cancel booking])
 
   p3 -- "booking request with approval" --> p41
   peer -- "booking request" --> p41
+  p3 -- "cancel request" --> p41
+  peer -- "cancel request" --> p41
+  p41 -- "valid cancel with booking token" --> p46
+  d2 -- "booked ranges" --> p46
+  p46 -- "booking" --> d2
+  p46 -- "booking write" --> booksys
+  p46 -- "cancel result" --> p45
   p41 -- "valid request" --> p42
   p41 -- "rejection reason" --> p45
   d1 -- "stored offer" --> p42
@@ -201,34 +218,36 @@ flowchart LR
   p44 -- "result" --> p45
   p45 -- "booking result" --> p3
   p45 -- "booking result" --> peer
+  p45 -- "cancel result" --> p3
+  p45 -- "cancel result" --> peer
   p45 -- "result event" --> d3
 ```
 
-P4.4 rechecks the slot and writes the booking in one transaction, so two requests for the same slot cannot both pass, even after a shop's manual wait (NFR-REL-02). P4.2 is idempotent: a repeated request for the same offer returns the existing Task rather than starting a new one (BR-18). See the decision table in §7.2.
+P4.4 rechecks the slot and writes the booking in one transaction, so two requests for the same slot cannot both pass, even after a shop's manual wait (NFR-REL-02). P4.2 is idempotent: a resent request for an offer that already has a Task gets a new Task that completes at once with the original result and `duplicateOf` (BR-18). P4.6 checks the `bookingToken` and the shop's cancellation cutoff (P-10) before cancelling. A reschedule is not part of P4: it is a question answered by P2 with an offer carrying `replacesBookingId`, and the swap happens in P4.4 when that offer is booked. See the decision table in §7.2.
 
 ## 6. Business rules catalogue
 
-| ID    | Rule                                                                                                                                                                                                                                                                                   | Requirement            | Where enforced                                                                  | Status                            |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------- | --------------------------------- |
-| BR-01 | A slot may be offered only if it starts inside the requested window, not before now, on a 30-minute boundary, and the whole service fits inside opening hours.                                                                                                                         | FR-BOOK-04             | `findFreeSlot` in `packages/barber-agent/src/book.ts`                           | Built (UTC; shop-local Phase 6)   |
-| BR-02 | A slot may not be offered if its time range overlaps any booked range or any Held or Reserved offer.                                                                                                                                                                                   | FR-BOOK-04, FR-BOOK-01 | `findFreeSlot` overlap check; holds Phase 2                                     | Built (bookings), Phase 2 (holds) |
-| BR-03 | An availability window must be strictly positive and no longer than the maximum search window (P-06).                                                                                                                                                                                  | FR-MSG-07, NFR-PERF-02 | `parseAvailabilityRequest`, `MAX_WINDOW_DAYS` in `packages/core/src/booking.ts` | Built                             |
-| BR-04 | All instants must be strict ISO 8601 with an explicit zone and a real calendar day; they are stored as canonical UTC.                                                                                                                                                                  | FR-MSG-06              | `toInstant` in `packages/core/src/booking.ts`                                   | Built                             |
-| BR-05 | A requesting agent accepts an offer only if its service equals the requested service and its start lies within `[earliest, latest]` inclusive.                                                                                                                                         | FR-MSG-04              | `offerMatches` in `packages/core/src/booking.ts`, `askForSlot`                  | Built                             |
-| BR-06 | An offer is Held from `issuedAt` until `expiresAt` (offer hold, P-01) and can be used for at most one booking. The business clock decides expiry; the personal agent treats it as expired the clock margin (P-09) before its own local deadline.                                       | FR-BOOK-01, FR-BOOK-02 | Offer store, booking handler, approval gate                                     | Phase 2                           |
-| BR-07 | An approval names exactly one `offerId` and `contextId`, is created only by the approval gate, and expires with its offer.                                                                                                                                                             | FR-GATE-02, FR-GATE-04 | `Approval` type and `bookOffer(approval)`                                       | Phase 2                           |
-| BR-08 | Nothing commits a person (time, money, personal data) without that person's explicit approval.                                                                                                                                                                                         | FR-GATE-01             | Approval gate; the only booking path takes an `Approval`                        | Phase 2 (nothing books today)     |
-| BR-09 | Opening hours count as the owner's standing approval unless the shop turns on manual approval. On manual approval the offer is Reserved and the booking Task stays `WORKING` until the owner decides, at most the manual approval wait (P-03), then `booking_rejected` `shop_timeout`. | FR-GATE-05             | Booking handler                                                                 | Phase 2                           |
-| BR-10 | A booking may be cancelled until the shop's cancellation cutoff (P-10); a cancel inside the cutoff ends in `cancel_rejected` with reason `cutoff`.                                                                                                                                     | FR-BOOK-03             | Booking handler                                                                 | Phase 2                           |
-| BR-11 | A reschedule is a `reschedule_request` answered with an offer carrying `replacesBookingId`; the old booking is cancelled in the same transaction that confirms the new one, so a failed reschedule leaves the old booking intact.                                                      | FR-BOOK-03             | Booking handler                                                                 | Phase 2                           |
-| BR-12 | A listing is published only after its owner proves control of the agent card's origin, and the card's interface URL must share that origin. Hosted agents each have their own subdomain, so origins are never shared (Phase 6).                                                        | FR-DIR-01, FR-DIR-03   | Directory verification worker                                                   | Phase 3                           |
-| BR-13 | Changing a listing's card URL resets it to unverified.                                                                                                                                                                                                                                 | FR-DIR-01, FR-DIR-04   | Directory API `PATCH`                                                           | Phase 3                           |
-| BR-14 | An interaction can be rated only if it is a verified interaction (both sides logged the offer and a matching decision, and the booking reached Completed or NoShow); each side rates it at most once.                                                                                  | FR-RATE-01             | Rating ingest                                                                   | Phase 5                           |
-| BR-15 | Text shown to a person must respect the text limit (P-19).                                                                                                                                                                                                                             | NFR-SEC-05             | `SAFE_TEXT` in `packages/core/src/booking.ts`                                   | Built                             |
-| BR-16 | A suspended listing disappears from search immediately; the business is told the reason and can appeal.                                                                                                                                                                                | FR-ADMIN-01            | Directory admin                                                                 | Phase 6                           |
-| BR-17 | No sender and no `contextId` may hold more than the open holds cap (P-07); beyond it the business answers `rejected` and issues no hold. A declined offer (`offer_declined`) releases its hold at once.                                                                                | FR-BOOK-01, NFR-SEC-03 | Offer store                                                                     | Phase 2                           |
-| BR-18 | A repeated `booking_request` for the same offer returns the existing Task, in any state, and never creates a second booking.                                                                                                                                                           | NFR-REL-02             | Booking handler (`offerId → taskId`)                                            | Phase 2                           |
-| BR-19 | `booking_request`, `offer_declined`, `cancel_request` and `reschedule_request` are accepted only in the `contextId` of the original offer. Until agent authentication (Phase 6) the `contextId` is a bearer capability: logged, never shown or put in a URL.                           | FR-GATE-02, NFR-SEC-01 | Booking handler                                                                 | Phase 2                           |
+| ID    | Rule                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | Requirement            | Where enforced                                                                  | Status                            |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- | ------------------------------------------------------------------------------- | --------------------------------- |
+| BR-01 | A slot may be offered only if it starts inside the requested window, not before now, on a 30-minute boundary, and the whole service fits inside opening hours.                                                                                                                                                                                                                                                                                                                                                 | FR-BOOK-04             | `findFreeSlot` in `packages/barber-agent/src/book.ts`                           | Built (UTC; shop-local Phase 6)   |
+| BR-02 | A slot may not be offered if its time range overlaps any booked range or any Held or Reserved offer.                                                                                                                                                                                                                                                                                                                                                                                                           | FR-BOOK-04, FR-BOOK-01 | `findFreeSlot` overlap check; holds Phase 2                                     | Built (bookings), Phase 2 (holds) |
+| BR-03 | An availability window must be strictly positive and no longer than the maximum search window (P-06).                                                                                                                                                                                                                                                                                                                                                                                                          | FR-MSG-07, NFR-PERF-02 | `parseAvailabilityRequest`, `MAX_WINDOW_DAYS` in `packages/core/src/booking.ts` | Built                             |
+| BR-04 | All instants must be strict ISO 8601 with an explicit zone and a real calendar day; they are stored as canonical UTC.                                                                                                                                                                                                                                                                                                                                                                                          | FR-MSG-06              | `toInstant` in `packages/core/src/booking.ts`                                   | Built                             |
+| BR-05 | A requesting agent accepts an offer only if its service equals the requested service and its start lies within `[earliest, latest]` inclusive.                                                                                                                                                                                                                                                                                                                                                                 | FR-MSG-04              | `offerMatches` in `packages/core/src/booking.ts`, `askForSlot`                  | Built                             |
+| BR-06 | An offer is Held from `issuedAt` until `expiresAt` (offer hold, P-01) and can be used for at most one booking. The business clock decides expiry; the personal agent treats it as expired the clock margin (P-09) before its own local deadline.                                                                                                                                                                                                                                                               | FR-BOOK-01, FR-BOOK-02 | Offer store, booking handler, approval gate                                     | Phase 2                           |
+| BR-07 | An approval names exactly one `offerId` (the `contextId` is recorded with it for correlation only), is created only by the approval gate, and expires with its offer.                                                                                                                                                                                                                                                                                                                                          | FR-GATE-02, FR-GATE-04 | `Approval` type and `bookOffer(approval)`                                       | Phase 2                           |
+| BR-08 | Nothing commits a person (time, money, personal data) without that person's explicit approval.                                                                                                                                                                                                                                                                                                                                                                                                                 | FR-GATE-01             | Approval gate; the only booking path takes an `Approval`                        | Phase 2 (nothing books today)     |
+| BR-09 | Opening hours count as the owner's standing approval unless the shop turns on manual approval. On manual approval the offer is Reserved and the booking Task stays `WORKING` until the owner decides, at most the manual approval wait (P-03), then `booking_rejected` `shop_timeout`.                                                                                                                                                                                                                         | FR-GATE-05             | Booking handler                                                                 | Phase 2                           |
+| BR-10 | A booking may be cancelled only by a request presenting its `bookingToken`, and only until the shop's cancellation cutoff (P-10); a cancel inside the cutoff ends in `cancel_rejected` with reason `cutoff`, and a wrong or missing token in `cancel_rejected` with reason `unknown_booking`.                                                                                                                                                                                                                  | FR-BOOK-03             | Booking handler                                                                 | Phase 2                           |
+| BR-11 | A reschedule is a `reschedule_request` Message presenting the `bookingToken`, answered with an offer carrying `replacesBookingId`, `no_availability`, or `rejected` with reason `cutoff`. The cutoff (P-10) is checked at the question and again at the swap (`booking_rejected` with reason `cutoff`), so a reschedule can never cancel a booking that a direct cancel would refuse. The old booking is cancelled in the same transaction that confirms the new one, so a failed reschedule leaves it intact. | FR-BOOK-03             | Offer issuer (question), booking handler (swap)                                 | Phase 2                           |
+| BR-12 | A listing is published only after its owner proves control of the agent card's origin, and the card's interface URL must share that origin. Hosted agents each have their own subdomain, so origins are never shared (Phase 6).                                                                                                                                                                                                                                                                                | FR-DIR-01, FR-DIR-03   | Directory verification worker                                                   | Phase 3                           |
+| BR-13 | Changing a listing's card URL resets it to unverified.                                                                                                                                                                                                                                                                                                                                                                                                                                                         | FR-DIR-01, FR-DIR-04   | Directory API `PATCH`                                                           | Phase 3                           |
+| BR-14 | An interaction can be rated only if it is a verified interaction (both sides logged the offer and a matching decision, and the booking reached Completed or NoShow); each side rates it at most once.                                                                                                                                                                                                                                                                                                          | FR-RATE-01             | Rating ingest                                                                   | Phase 5                           |
+| BR-15 | Text shown to a person must respect the text limit (P-19).                                                                                                                                                                                                                                                                                                                                                                                                                                                     | NFR-SEC-05             | `SAFE_TEXT` in `packages/core/src/booking.ts`                                   | Built                             |
+| BR-16 | A suspended listing disappears from search immediately; the business is told the reason and can appeal.                                                                                                                                                                                                                                                                                                                                                                                                        | FR-ADMIN-01            | Directory admin                                                                 | Phase 6                           |
+| BR-17 | No sender (client IP until Phase 6, agent identity after) may hold more than the open holds cap (P-07); beyond it the business answers `rejected` and issues no hold. There is no per-`contextId` cap, because clients choose `contextId`. A declined offer (`offer_declined`) releases its hold at once.                                                                                                                                                                                                      | FR-BOOK-01, NFR-SEC-03 | Offer store                                                                     | Phase 2                           |
+| BR-18 | A resent `booking_request` for an offer that already has a Task never creates a second booking: the new Task completes at once with the original result plus `duplicateOf: <original taskId>`. A client that holds the `taskId` retries with `GetTask` instead (the SDK refuses a send naming a finished task, `server/index.js:2789`). `cancel_request` works the same way through `bookingId → taskId`.                                                                                                      | NFR-REL-02             | Booking handler (`offerId → taskId`, `bookingId → taskId`)                      | Phase 2                           |
+| BR-19 | Authority comes from server-minted secrets, not from `contextId`, which the client chooses (`server/index.js:2815`): `offerId` authorises `booking_request` and `offer_declined` for that offer; `bookingToken` authorises `cancel_request` and `reschedule_request` for that booking. Until agent authentication (Phase 6) both are bearer capabilities: logged as hashes, never shown or put in a URL.                                                                                                       | FR-GATE-02, NFR-SEC-01 | Offer store, booking handler                                                    | Phase 2                           |
 
 ## 7. Decision tables
 
@@ -239,7 +258,7 @@ Each table is complete: every combination of conditions maps to exactly one acti
 | Rule                                          | 1                       | 2          | 3             | 4             | 5             | 6             | 7                   |
 | --------------------------------------------- | ----------------------- | ---------- | ------------- | ------------- | ------------- | ------------- | ------------------- |
 | Service exists in the book                    | N                       | Y          | Y             | Y             | Y             | Y             | Y                   |
-| Sender and context under the hold cap (P-07)  | -                       | N          | Y             | Y             | Y             | Y             | Y                   |
+| Sender under the hold cap (P-07)              | -                       | N          | Y             | Y             | Y             | Y             | Y                   |
 | Start is in the window and not before now     | -                       | -          | N             | Y             | Y             | Y             | Y                   |
 | Shop open that day, service fits before close | -                       | -          | -             | N             | Y             | Y             | Y                   |
 | Overlaps a booking                            | -                       | -          | -             | -             | Y             | N             | N                   |
@@ -250,28 +269,29 @@ If the search reaches `latest` without an action of "offer", the reply is `no_av
 
 ### 7.2 Accept a `booking_request`? (BR-06, BR-07, BR-09, BR-18, BR-19; Phase 2)
 
-| Rule                                      | 1          | 2                    | 3               | 4         | 5           | 6            | 7           | 8            | 9               | 10             |
-| ----------------------------------------- | ---------- | -------------------- | --------------- | --------- | ----------- | ------------ | ----------- | ------------ | --------------- | -------------- |
-| Request valid (shape, contract extension) | N          | Y                    | Y               | Y         | Y           | Y            | Y           | Y            | Y               | Y              |
-| Already a Task for this `offerId`         | -          | Y                    | N               | N         | N           | N            | N           | N            | N               | N              |
-| `offerId` known in this `contextId`       | -          | -                    | N               | Y         | Y           | Y            | Y           | Y            | Y               | Y              |
-| Offer Held and unexpired                  | -          | -                    | -               | N         | Y           | Y            | Y           | Y            | Y               | Y              |
-| Shop requires manual approval             | -          | -                    | -               | -         | N           | N            | Y           | Y            | Y               | Y              |
-| Owner decision within P-03                | -          | -                    | -               | -         | -           | -            | Approve     | Approve      | Decline         | None           |
-| Slot free at write (recheck)              | -          | -                    | -               | -         | Y           | N            | Y           | N            | -               | -              |
-| **Action**                                | `rejected` | Return existing Task | `unknown_offer` | `expired` | **Confirm** | `slot_taken` | **Confirm** | `slot_taken` | `shop_declined` | `shop_timeout` |
+| Rule                                                            | 1          | 2                                                       | 3               | 4         | 5        | 6           | 7            | 8           | 9            | 10              | 11             |
+| --------------------------------------------------------------- | ---------- | ------------------------------------------------------- | --------------- | --------- | -------- | ----------- | ------------ | ----------- | ------------ | --------------- | -------------- |
+| Request valid (shape, contract extension header)                | N          | Y                                                       | Y               | Y         | Y        | Y           | Y            | Y           | Y            | Y               | Y              |
+| Offer already has a Task                                        | -          | Y                                                       | N               | N         | N        | N           | N            | N           | N            | N               | N              |
+| `offerId` issued by this business                               | -          | -                                                       | N               | Y         | Y        | Y           | Y            | Y           | Y            | Y               | Y              |
+| Offer Held and unexpired                                        | -          | -                                                       | -               | N         | Y        | Y           | Y            | Y           | Y            | Y               | Y              |
+| Offer replaces a booking and the swap is past the cutoff (P-10) | -          | -                                                       | -               | -         | Y        | N           | N            | N           | N            | N               | N              |
+| Shop requires manual approval                                   | -          | -                                                       | -               | -         | -        | N           | N            | Y           | Y            | Y               | Y              |
+| Owner decision by `reservedUntil` (P-03)                        | -          | -                                                       | -               | -         | -        | -           | -            | Approve     | Approve      | Decline         | None           |
+| Slot free at write (recheck)                                    | -          | -                                                       | -               | -         | -        | Y           | N            | Y           | N            | -               | -              |
+| **Action**                                                      | `rejected` | New Task returns the original result with `duplicateOf` | `unknown_offer` | `expired` | `cutoff` | **Confirm** | `slot_taken` | **Confirm** | `slot_taken` | `shop_declined` | `shop_timeout` |
 
-Actions other than "Confirm" and "Return existing Task" end the Task `REJECTED` with a `booking_rejected` of that reason. In rules 7 to 10 the offer is Reserved while the owner decides, so a recheck can only fail if the shop's own booking system took the slot outside Hitchpost (a walk-in, for example).
+Rule 1 covers a missing `A2A-Extensions` header too: the SDK refuses the send with `ExtensionSupportRequiredError` before the executor runs (`server/index.js:2775-2781`). Actions other than "Confirm" and the duplicate rule end the Task `REJECTED` with a `booking_rejected` of that reason. In rules 8 to 11 the offer is Reserved while the owner decides, so a recheck can only fail if the shop's own booking system took the slot outside Hitchpost (a walk-in, for example). A confirmed reschedule (rules 6 and 8 with `replacesBookingId`) cancels the old booking in the same transaction.
 
 ### 7.3 Can this interaction be rated? (BR-14; Phase 5)
 
-| Rule                                          | 1      | 2      | 3                  | 4                            | 5                 |
-| --------------------------------------------- | ------ | ------ | ------------------ | ---------------------------- | ----------------- |
-| Rater was a party to the interaction          | N      | Y      | Y                  | Y                            | Y                 |
-| Interaction record has both sides' signatures | -      | N      | Y                  | Y                            | Y                 |
-| Booking reached Completed or NoShow           | -      | -      | N                  | Y                            | Y                 |
-| Rater already rated it                        | -      | -      | -                  | Y                            | N                 |
-| **Action**                                    | Refuse | Refuse | Refuse until final | Refuse (one rating per side) | **Accept rating** |
+| Rule                                                                                       | 1      | 2      | 3                  | 4                            | 5                 |
+| ------------------------------------------------------------------------------------------ | ------ | ------ | ------------------ | ---------------------------- | ----------------- |
+| Rater was a party to the interaction                                                       | N      | Y      | Y                  | Y                            | Y                 |
+| Both sides' audit hashes of the offer and the decision match (Phase 5; signatures Phase 6) | -      | N      | Y                  | Y                            | Y                 |
+| Booking reached Completed or NoShow                                                        | -      | -      | N                  | Y                            | Y                 |
+| Rater already rated it                                                                     | -      | -      | -                  | Y                            | N                 |
+| **Action**                                                                                 | Refuse | Refuse | Refuse until final | Refuse (one rating per side) | **Accept rating** |
 
 ## 8. State machines
 
@@ -283,11 +303,11 @@ The state names below are the enumeration values `OfferState`, `BookingStatus` a
 stateDiagram-v2
   [*] --> Held: offer issued, issuedAt and expiresAt set
   Held --> Booked: booking written, standing approval
-  Held --> Reserved: booking_request accepted, shop manual
+  Held --> Reserved: booking_request accepted, shop manual, reservedUntil set
   Held --> Declined: offer_declined received
   Held --> Expired: expiresAt reached (P-01)
   Reserved --> Booked: owner approves, recheck passes
-  Reserved --> Released: owner declines, P-03 timeout or recheck fails
+  Reserved --> Released: owner declines, reservedUntil passes or recheck fails
   Booked --> [*]
   Declined --> Purged: after P-11
   Expired --> Purged: after P-11
@@ -295,7 +315,7 @@ stateDiagram-v2
   Purged --> [*]
 ```
 
-Held and Reserved offers block slots (BR-02). Booked offers are kept as part of their booking's record. Today an offer exists only as a message; nothing is stored (Built as message, Phase 2 as state).
+Held and Reserved offers block slots (BR-02). A Reserved offer keeps its `expiresAt` unchanged, because it is part of the offer the person approved and of the offer's audit hash; the reservation runs to its own `reservedUntil` (acceptance time + P-03). Booked offers are kept as part of their booking's record. Today an offer exists only as a message; nothing is stored (Built as message, Phase 2 as state).
 
 ### 8.2 Booking (Phase 2)
 
@@ -319,13 +339,15 @@ Completed is what the north star counts as "honored" ([01](01-vision-and-scope.m
 
 ### 8.3 A2A booking Task (Phase 2, ADR 0012)
 
-The SDK's task states, as Hitchpost uses them for `booking_request`, `cancel_request` and `reschedule_request`.
+The SDK's task states, as Hitchpost uses them for `booking_request` and `cancel_request`. `reschedule_request` is a question answered by a Message, so it has no Task. A resent request for an offer or booking that already has a Task gets a new Task that goes straight from SUBMITTED to the original final state, carrying `duplicateOf` (BR-18).
 
 ```mermaid
 stateDiagram-v2
   [*] --> SUBMITTED: request received
   SUBMITTED --> WORKING: request valid
   SUBMITTED --> REJECTED: invalid request
+  SUBMITTED --> COMPLETED: duplicate of a confirmed request
+  SUBMITTED --> REJECTED: duplicate of a rejected request
   WORKING --> WORKING: status "Waiting for the shop"
   WORKING --> COMPLETED: booking_confirmed or cancelled
   WORKING --> REJECTED: booking_rejected or cancel_rejected
@@ -345,6 +367,9 @@ stateDiagram-v2
   Pending --> Verified: origin proof passes
   Pending --> Pending: proof fails, owner retries
   Verified --> Pending: card URL changed
+  Verified --> Paused: owner or operator pauses (pilot holiday, rollback)
+  Paused --> Verified: owner or operator resumes
+  Paused --> Closed: owner deletes or operator removes
   Verified --> Suspended: operator suspends
   Suspended --> Verified: appeal upheld
   Verified --> Closed: owner deletes
@@ -392,7 +417,7 @@ flowchart TD
   check -- "yes" --> manual{Shop requires manual approval?}
   manual -- "no" --> write[Recheck slot and write booking in one transaction]
   manual -- "yes" --> wait[Offer Reserved, Task WORKING, owner notified, personal agent polls GetTask]
-  wait --> owner{Owner decides within P-03?}
+  wait --> owner{Owner decides by reservedUntil, P-03?}
   owner -- "decline or no answer" --> rej
   owner -- "approve" --> write
   write --> free{Slot still free?}
@@ -405,27 +430,28 @@ flowchart TD
 
 ## 10. Event list
 
-| ID   | Event                                   | Type     | Trigger                            | Process | Response                                                             | Status  |
-| ---- | --------------------------------------- | -------- | ---------------------------------- | ------- | -------------------------------------------------------------------- | ------- |
-| E-01 | Person asks for availability            | External | Person                             | P1, P2  | Offer, `no_availability` or `rejected`                               | Built   |
-| E-02 | Outside agent sends a message           | External | Any A2A agent                      | P2, P4  | Validated reply or `rejected`                                        | Built   |
-| E-03 | Person approves an offer                | External | Person                             | P3, P4  | Booking confirmed or rejected                                        | Phase 2 |
-| E-04 | Person declines an offer                | External | Person                             | P3, P2  | `offer_declined` sent; hold released at once; decision logged        | Phase 2 |
-| E-05 | Owner decides a manual booking          | External | Business owner                     | P4      | Task completes or is rejected `shop_declined`                        | Phase 2 |
-| E-06 | Person cancels or reschedules           | External | Person                             | P4      | `cancelled`, `cancel_rejected`, or an offer with `replacesBookingId` | Phase 2 |
-| E-07 | Offer reaches `expiresAt`               | Temporal | Clock, offer hold (P-01)           | P2      | Hold released, offer Expired                                         | Phase 2 |
-| E-08 | Manual approval wait ends               | Temporal | Clock, manual approval wait (P-03) | P4      | Offer Released; `booking_rejected` `shop_timeout`                    | Phase 2 |
-| E-09 | Appointment time passes                 | Temporal | Clock                              | P4      | Shop and customer asked how it went                                  | Phase 4 |
-| E-10 | Business registers or edits a listing   | External | Business owner                     | P5      | Listing pending, verification started                                | Phase 3 |
-| E-11 | Agent card refresh finds origin changed | Temporal | Daily card refresh                 | P5      | Listing back to pending                                              | Phase 3 |
-| E-12 | Person submits a rating or review       | External | Person                             | P6      | Accepted or refused per §7.3                                         | Phase 5 |
-| E-13 | Someone reports a listing               | External | Person or agent                    | P7      | Report opened                                                        | Phase 5 |
-| E-14 | Retention period ends                   | Temporal | Daily job                          | All     | Delete per P-11 to P-14 ([08 §5](08-data-design.md#5-retention))     | Phase 6 |
-| E-15 | Outcome reported                        | External | Shop (dashboard) or customer       | P4, P6  | Booking Completed or NoShow; interaction becomes ratable             | Phase 4 |
+| ID   | Event                                   | Type     | Trigger                            | Process                               | Response                                                                                                                        | Status  |
+| ---- | --------------------------------------- | -------- | ---------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ------- |
+| E-01 | Person asks for availability            | External | Person                             | P1, P2                                | Offer, `no_availability` or `rejected`                                                                                          | Built   |
+| E-02 | Outside agent sends a message           | External | Any A2A agent                      | P2, P4                                | Validated reply or `rejected`                                                                                                   | Built   |
+| E-03 | Person approves an offer                | External | Person                             | P3, P4                                | Booking confirmed or rejected                                                                                                   | Phase 2 |
+| E-04 | Person declines an offer                | External | Person                             | P3, P2                                | `offer_declined` sent; hold released at once; decision logged                                                                   | Phase 2 |
+| E-05 | Owner decides a manual booking          | External | Business owner                     | P4                                    | Task completes or is rejected `shop_declined`                                                                                   | Phase 2 |
+| E-06 | Person cancels or reschedules           | External | Person                             | P4 (cancel), P2 (reschedule question) | `cancelled` or `cancel_rejected`; for a reschedule, an offer with `replacesBookingId`, `no_availability` or `rejected` `cutoff` | Phase 2 |
+| E-07 | Offer reaches `expiresAt`               | Temporal | Clock, offer hold (P-01)           | P2                                    | Hold released, offer Expired                                                                                                    | Phase 2 |
+| E-08 | Manual approval wait ends               | Temporal | Clock, manual approval wait (P-03) | P4                                    | Offer Released; `booking_rejected` `shop_timeout`                                                                               | Phase 2 |
+| E-09 | Appointment time passes                 | Temporal | Clock                              | P4, P6                                | Shop asked to mark the outcome (Phase 4); customer asked "Did it go as booked?" (Phase 5)                                       | Phase 4 |
+| E-10 | Business registers or edits a listing   | External | Business owner                     | P5                                    | Listing pending, verification started                                                                                           | Phase 3 |
+| E-11 | Agent card refresh finds origin changed | Temporal | Daily card refresh                 | P5                                    | Listing back to pending                                                                                                         | Phase 3 |
+| E-12 | Person submits a rating or review       | External | Person                             | P6                                    | Accepted or refused per §7.3                                                                                                    | Phase 5 |
+| E-13 | Someone reports a listing               | External | Person or agent                    | P7                                    | Report opened                                                                                                                   | Phase 5 |
+| E-14 | Retention period ends                   | Temporal | Daily job                          | All                                   | Delete per P-11 to P-14 ([08 §5](08-data-design.md#5-retention))                                                                | Phase 6 |
+| E-15 | Outcome reported                        | External | Shop (dashboard) or customer       | P4, P6                                | Booking Completed or NoShow; interaction becomes ratable                                                                        | Phase 4 |
 
 ## Revision history
 
-| Version | Date       | Change                                                                                                                                                                                                                                                  | Author      |
-| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 1.0     | 2026-11-09 | First baseline                                                                                                                                                                                                                                          | S. Jannisar |
-| 1.1     | 2026-11-09 | Remediation after independent review: balanced level 1 and level 2 DFDs, Reserved offer state, WORKING instead of input-required, recheck at write, idempotency, hold caps, context binding (BR-17 to BR-19), Booking NoShow and Completed, E-15, P-IDs | S. Jannisar |
+| Version | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                              | Author      |
+| ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 1.0     | 2026-11-09 | First baseline                                                                                                                                                                                                                                                                                                                                                                                      | S. Jannisar |
+| 1.1     | 2026-11-09 | Remediation after independent review: balanced level 1 and level 2 DFDs, Reserved offer state, WORKING instead of input-required, recheck at write, idempotency, hold caps, context binding (BR-17 to BR-19), Booking NoShow and Completed, E-15, P-IDs                                                                                                                                             | S. Jannisar |
+| 1.2     | 2026-11-09 | Second remediation after regrade: cancel, reschedule and outside-agent `offer_declined` flows in the DFDs (P4.6 added at level 2); BR-17 to BR-19 rebuilt on SDK behaviour (per-sender cap, `duplicateOf`, `offerId` and `bookingToken` capabilities); reschedule cutoff in BR-11 and decision table 7.2; `reservedUntil`; Paused listing transitions; Phase 5 attestation by matching audit hashes | S. Jannisar |

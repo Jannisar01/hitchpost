@@ -3,7 +3,7 @@
 | Field       | Value                                                                             |
 | ----------- | --------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-19                                                                         |
-| Version     | 1.1                                                                               |
+| Version     | 1.2                                                                               |
 | Status      | Baselined for Phase 2                                                             |
 | Date        | 2026-11-09                                                                        |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                  |
@@ -15,15 +15,15 @@ What happens after production: support, versioning, patching, the debt I'm carry
 
 This is the one support table for the package (P-17). [17 Transition plan](17-transition-plan.md) and [18 Deployment and operations](18-deployment-and-operations.md) link here instead of restating it.
 
-**Response targets by severity (P-17).** Severities are the ones used in incident response ([18](18-deployment-and-operations.md)).
+**Severity and response targets (P-17).** This is the single severity table for the package; incident response in [18](18-deployment-and-operations.md) and the pilot rollback in [17](17-transition-plan.md) cite it and don't restate the definitions.
 
-| Severity                    | Meaning                                                                                | First response               | Resolution target                                                           |
-| --------------------------- | -------------------------------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------- |
-| SEV1                        | Bookings wrong or lost, any booking without approval, security or personal-data breach | 1 hour, any time             | Mitigate (rollback or pause) within 1 hour; fix with a test before resuming |
-| SEV2                        | Service down or degraded; one shop's sync failing                                      | 4 business hours             | Next patch release                                                          |
-| SEV3                        | Minor or cosmetic defect                                                               | Acknowledged at triage       | Next release                                                                |
-| Community issue (not a SEV) | Feature request, question, docs                                                        | Triaged within 5 days        | Backlog; `good first issue` where possible                                  |
-| Security report             | Private vulnerability reporting ([SECURITY.md](../../SECURITY.md))                     | Acknowledged within 72 hours | Patched per P-16                                                            |
+| Severity                    | Meaning                                                                                                                                       | First response                                                                                                          | Resolution target                                                           |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| SEV1                        | Any double booking or lost confirmed booking caused by Hitchpost; any booking without a logged approval; any security or personal-data breach | 1 hour, any time while any listing is live (none promised while pilot listings are paused, [17](17-transition-plan.md)) | Mitigate (rollback or pause) within 1 hour; fix with a test before resuming |
+| SEV2                        | Service down or degraded, including an error rate on the booking path above the SLO for 1 hour; one shop's sync failing for more than 2 hours | 4 business hours                                                                                                        | Next patch release                                                          |
+| SEV3                        | Minor, cosmetic or non-booking defect                                                                                                         | Acknowledged at triage                                                                                                  | Next release                                                                |
+| Community issue (not a SEV) | Feature request, question, docs                                                                                                               | Triaged within 5 days                                                                                                   | Backlog; `good first issue` where possible                                  |
+| Security report             | Private vulnerability reporting ([SECURITY.md](../../SECURITY.md))                                                                            | Acknowledged within 72 hours                                                                                            | Patched per P-16                                                            |
 
 **Channels by audience:**
 
@@ -135,3 +135,4 @@ If the pilot's kill criteria are met ([03](03-business-case.md)), or I stop main
 | 0.1     | 2026-11-08 | First draft                                                                                                                                                                                                                                                                                                                                                                           | S. Jannisar |
 | 1.0     | 2026-11-09 | Baselined: renumbered into lifecycle order, formal document control, standards conformance                                                                                                                                                                                                                                                                                            | S. Jannisar |
 | 1.1     | 2026-11-09 | Remediation after independent review: one support table by severity (P-17) that 17 and 18 link to; SEV labels replace P0 to P3; contract versioning via `AgentCapabilities.extensions`, major only (P-18); patching per P-16; D-01 time zones moved to Phase 6; D-04 and D-10 brought into Phase 2 where the plan now pays them; new D-15 (book configuration validation, FR-BOOK-12) | S. Jannisar |
+| 1.2     | 2026-11-09 | Second remediation after regrade: this is now the single SEV table (precise SEV1 and SEV2 triggers, no SEV1 cover during the pilot holiday pause); 17 and 18 cite it                                                                                                                                                                                                                  | S. Jannisar |

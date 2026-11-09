@@ -1,7 +1,7 @@
 # 0012. Booking protocol: Messages for questions, Tasks for commitments
 
 - **Date:** 2026-11-09
-- **Status:** Accepted
+- **Status:** Accepted, amended 2026-11-09 (see the amendment at the end)
 
 ## Context
 
@@ -38,4 +38,23 @@ The full contract is in [13 Interfaces](../sad/13-interfaces.md); this records t
 
 ## Consequences
 
-The personal agent has to poll, and it needs a second, longer deadline for bookings (P-04) next to the 10-second deadline for questions (P-05). The business agent needs persistent state from Phase 2 (offers, tasks, audit) so a restart during a 30-minute wait doesn't lose the booking: SQLite through the SDK's `DatabaseTaskStore`. Until agent authentication arrives in Phase 6, anyone holding a `contextId` can act on that conversation. That's acceptable only because the `contextId` is never exposed outside the two agents.
+The personal agent has to poll, and it needs a second, longer deadline for bookings (P-04) next to the 10-second deadline for questions (P-05). The business agent needs persistent state from Phase 2 (offers, tasks, audit) so a restart during a 30-minute wait doesn't lose the booking: SQLite through the SDK's `DatabaseTaskStore`. Until agent authentication arrives in Phase 6, anyone holding an `offerId` or a `bookingToken` can act on that offer or booking. That's acceptable only because both are random, server-minted and never exposed outside the two agents.
+
+## Amendment, 2026-11-09
+
+A second independent review checked decisions 8, 9, 10 and 11 against the SDK and found three of them unbuildable as written. I verified each against `@a2a-js/sdk` 1.3.0 `dist/server/index.js` before changing anything:
+
+- **Required extensions come from a header.** The handler checks required extensions against `context.requestedExtensions`, which the transport fills from the `A2A-Extensions` HTTP header, not from `message.extensions` (lines 2775-2781). A client that only lists the uri in the message is refused with `ExtensionSupportRequiredError`.
+- **Retries make new tasks.** A send without `taskId` gets `crypto.randomUUID()` (line 2801). A send that names a task already in a terminal state throws `UnsupportedOperationError` (line 2789).
+- **`contextId` is client-chosen.** The handler keeps the `contextId` the client sent (line 2815). It was never server-minted, so it can't be an authority, and a per-`contextId` cap is dodged by sending a new one.
+
+The decisions change as follows (13 Interfaces has the full rules):
+
+- **Replaces 8 (context binding): capabilities.** Authority comes from server-minted secrets. `offerId` (random UUID v4) authorises booking or declining that offer. `booking_confirmed` carries a `bookingToken` (128-bit random, base64url) that `cancel_request` and `reschedule_request` must present. `contextId` is for correlation only.
+- **Replaces 9 (idempotency).** A client that has the `taskId` retries with `GetTask`. A client that lost the response resends without a `taskId`; the business looks up `offerId → taskId` and the new Task completes at once with the original payload plus `duplicateOf: <original taskId>`. No second booking. Cancels work the same way through `bookingId → taskId`.
+- **Replaces 10 (hold caps).** The cap (P-07) is per sender only: the client IP until Phase 6, then agent identity.
+- **Amends 11 (contract version).** The extension stays `required: true`. Clients send its uri in the `A2A-Extensions` header (JS SDK: `serviceParameters`) as well as in each message's `extensions`.
+- **Amends 1 and 7 (reschedule).** `reschedule_request` is a question, so it is a Message, answered with an offer carrying `replacesBookingId`, `no_availability`, or `rejected` with reason `cutoff`. The shop's cancellation cutoff (P-10) is checked at the question and again at the swap; at the swap the Task ends `booking_rejected` with the new reason `cutoff`.
+- **Amends 2 (offer states).** A Reserved offer keeps its `expiresAt` (it is part of what the person approved). The reservation has its own `reservedUntil` = acceptance time + P-03.
+
+Why not simply mint the `contextId` on the server and reject client-supplied ones? Because A2A clients legitimately set `contextId` to group their own conversations, and rejecting it would break interoperability with agents I didn't write (release criterion RC6). A separate secret costs one field and keeps the protocol standard.

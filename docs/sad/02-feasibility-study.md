@@ -3,7 +3,7 @@
 | Field       | Value                                                                                                                                                                              |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-02                                                                                                                                                                          |
-| Version     | 1.1                                                                                                                                                                                |
+| Version     | 1.2                                                                                                                                                                                |
 | Status      | Baselined for Phase 2                                                                                                                                                              |
 | Date        | 2026-11-09                                                                                                                                                                         |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                                                                                                   |
@@ -72,7 +72,7 @@ Rating: **High** (no known blocker), **Medium** (a known risk with a mitigation)
 | Is A2A mature enough to build on?                                                 | v1.0 spec, a v0.3 compatibility layer, three transports. Breaking changes are possible (R-10). Mitigation: contract tests and a supported-version window ([13 Interfaces](13-interfaces.md)). | High       |
 | Can the approval gate be made safe against hostile agents?                        | Partly proven: strict validation and offer matching are built and tested. The gate itself is Phase 2 design ([10 Architecture](10-architecture.md)).                                          | High       |
 | Can a business agent read and write the barber's real booking tool?               | Unknown. It depends on each tool's API and terms (A-03, R-03). Fallbacks exist: calendar sync, or a Hitchpost-hosted book.                                                                    | **Medium** |
-| Can one person build and run it?                                                  | Within the scope of one neighbourhood, yes. Effort estimate of 697 hours expected, about 836 hours with reserve, discovery included ([16 Project plan](16-project-plan.md)).                  | Medium     |
+| Can one person build and run it?                                                  | Within the scope of one neighbourhood, yes. Effort estimate of 716 hours expected, about 859 hours with reserve, discovery included ([16 Project plan](16-project-plan.md)).                  | Medium     |
 
 ### 4.2 Economic feasibility: Medium
 
@@ -82,30 +82,40 @@ A 3-year cash view under stated assumptions. Year 1 runs November 2026 to Octobe
 
 - **Pricing:** the single hypothesis in [03 Business case](03-business-case.md) section 2: $1 per honored booking, capped at $39 per shop per month, first 3 months free for each shop.
 - **Volume:** a paying shop gets 25 honored Hitchpost bookings a month in Year 2 and 35 in Year 3, so it pays $25 and then $35 a month (under the cap).
-- **Shops, as a scenario, not a forecast:** the pilot neighbourhood (10 shops) goes live in October 2027 and pays from January 2028. If the 12-week expansion rule in 03 section 5 passes, a second neighbourhood (15 shops) starts in May 2028 and pays from August 2028, and a third (15 shops) starts in November 2028 and pays from February 2029. 80% of shops convert to paying after the free months. That gives 116 paying shop-months in Year 2 (10 × 10 + 15 × 3, × 80%) and 348 in Year 3 (25 × 12 + 15 × 9, × 80%). If an expansion step fails its rule, the later rows don't happen.
+- **Shops, as a scenario, not a forecast:** the pilot neighbourhood (10 shops) goes live on 2027-10-19 and pays from February 2028. If the 12-week expansion rule in 03 section 5 passes, a second neighbourhood (15 shops) starts in June 2028 and pays from September 2028, and a third (15 shops) starts in December 2028 and pays from March 2029. 80% of shops convert to paying after the free months. That gives 96 paying shop-months in Year 2 ((10 × 9 + 15 × 2) × 80%) and 336 in Year 3 ((10 × 12 + 15 × 12 + 15 × 8) × 80%). If an expansion step fails its rule, the later rows don't happen.
 - No churn modelled. No payments income. Owner time excluded (see below).
 
-|                                                 | Year 1      | Year 2      | Year 3      |
-| ----------------------------------------------- | ----------- | ----------- | ----------- |
-| AI pair and tools                               | $1,200      | $1,200      | $2,000      |
-| Domain                                          | $20         | $20         | $20         |
-| Hosting (staging, then production and database) | $250        | $1,500      | $4,800      |
-| Research incentives (Wizard-of-Oz, interviews)  | $700        | $0          | $0          |
-| Legal review (privacy notice, terms)            | $1,500      | $0          | $0          |
-| Moderation and misc.                            | $0          | $300        | $1,000      |
-| **Cash cost**                                   | **$3,670**  | **$3,020**  | **$7,820**  |
-| **Revenue**                                     | **$0**      | **$2,900**  | **$12,180** |
-| **Net**                                         | **−$3,670** | **−$120**   | **+$4,360** |
-| **Cumulative**                                  | **−$3,670** | **−$3,790** | **+$570**   |
+|                                                          | Year 1      | Year 2      | Year 3      |
+| -------------------------------------------------------- | ----------- | ----------- | ----------- |
+| AI pair and tools                                        | $1,200      | $1,200      | $2,000      |
+| Domain                                                   | $20         | $20         | $20         |
+| Hosting (staging and production from Phase 6, July 2027) | $240        | $1,500      | $4,800      |
+| Research incentives (Wizard-of-Oz, interviews)           | $700        | $0          | $0          |
+| Legal review (privacy notice, terms)                     | $1,500      | $0          | $0          |
+| Moderation and misc.                                     | $0          | $300        | $1,000      |
+| **Cash cost**                                            | **$3,660**  | **$3,020**  | **$7,820**  |
+| **Revenue**                                              | **$0**      | **$2,400**  | **$11,760** |
+| **Net**                                                  | **−$3,660** | **−$620**   | **+$3,940** |
+| **Cumulative**                                           | **−$3,660** | **−$4,280** | **−$340**   |
 
-**Reconciliation with the project budget.** The spend to the v1 decision (November 2026 to January 2028) is Year 1 ($3,670) plus November 2027 to January 2028 from Year 2 ($300 tools, $20 domain, $150 hosting = $470): **$4,140 before contingency, $4,968 with 20% contingency**. That is the same figure as [16 Project plan](16-project-plan.md) section 7.2.
+**No-expansion scenario** (only the pilot neighbourhood ever pays; Year 3 costs cut to the Year 2 level of $3,020 because there is nothing to scale):
 
-**Net present value** at a 10% discount rate, end-of-year cash flows: −$3,670 / 1.10 − $120 / 1.21 + $4,360 / 1.331 = −$3,336 − $99 + $3,276 = **NPV ≈ −$160** (**estimate**). In cash terms the project roughly breaks even over three years if two expansion steps succeed, and loses about $3,800 if none do.
+|                | Year 1      | Year 2                        | Year 3                        |
+| -------------- | ----------- | ----------------------------- | ----------------------------- |
+| Revenue        | $0          | $1,800 (72 shop-months × $25) | $3,360 (96 shop-months × $35) |
+| Net            | −$3,660     | −$1,220                       | +$340                         |
+| **Cumulative** | **−$3,660** | **−$4,880**                   | **−$4,540**                   |
+
+If Year 3 costs were not cut, the no-expansion cumulative would be about −$9,340; cutting them is part of the stop rule.
+
+**Reconciliation with the project budget.** The spend to the v1 decision (November 2026 to February 2028) is Year 1 ($3,660) plus November 2027 to February 2028 from Year 2 ($400 tools, $20 domain, $240 hosting = $660): **$4,320 before contingency, $5,184 with 20% contingency**. That is the same figure as [16 Project plan](16-project-plan.md) section 7.2.
+
+**Net present value** at a 10% discount rate, end-of-year cash flows: −$3,660 / 1.10 − $620 / 1.21 + $3,940 / 1.331 = −$3,327 − $512 + $2,960 = **NPV ≈ −$880** (**estimate**). The no-expansion scenario gives −$3,327 − $1,008 + $255 = **NPV ≈ −$4,080**. In cash terms the project comes close to breaking even over three years only if both expansion steps succeed, and loses about $4,500 if none do.
 
 - **Run-rate break-even:** Year 3 monthly cost is about $650; at $35 per paying shop that's about **19 paying shops**.
-- **My time is not in the table.** About 697 hours to v1 at an opportunity cost of $60 an hour is about $42,000 (**estimate**). It isn't recovered in 3 years at this scale; with it included the NPV is strongly negative.
+- **My time is not in the table.** About 716 hours to v1 at an opportunity cost of $60 an hour is about $43,000 (**estimate**). It isn't recovered in 3 years at this scale; with it included the NPV is strongly negative.
 
-**Conclusion:** the cash risk is small and bounded, under $5,000 before any revenue. The economic case at this scale rests on what I learn, the portfolio value and the option to expand. It does not rest on near-term profit, and the NPV says so plainly. That's acceptable as long as the kill criteria in section 7 are honored.
+**Conclusion:** the cash risk is small and bounded, about $5,200 before any revenue (budget with contingency). The economic case at this scale rests on what I learn, the portfolio value and the option to expand. It does not rest on near-term profit, and the NPV says so plainly. That's acceptable as long as the kill criteria in section 7 are honored.
 
 ### 4.3 Operational feasibility: Medium
 
@@ -118,7 +128,7 @@ A 3-year cash view under stated assumptions. Year 1 runs November 2026 to Octobe
 
 ### 4.4 Schedule feasibility: Medium
 
-The expected effort is 697 hours (P80 about 714, P95 about 731) from the three-point estimates, discovery work included, or about 836 hours with a 20% reserve. All of it is done by one person at 15 hours a week (**estimate** of sustainable solo capacity), so discovery and build share the same hours. On that resource-loaded plan the pilot goes live on **2027-10-12** and the v1 decision lands on **2028-01-18**, or as late as **2028-03-21** if the full reserve is used before the pilot ([16 Project plan](16-project-plan.md)). The schedule is sensitive to two things: the booking-system connector (WP-6.5) and how fast barbers can be recruited for the pilot.
+The expected effort is 716 hours (P80 about 733, P95 about 750) from the three-point estimates, discovery work included, or about 859 hours with a 20% reserve. All of it is done by one person at 15 hours a week (**estimate** of sustainable solo capacity), so discovery and build share the same hours. On that resource-loaded plan the pilot goes live on **2027-10-19** and the v1 decision lands on **2028-02-08**, or as late as **2028-04-18** if the full reserve is used before the pilot ([16 Project plan](16-project-plan.md)). The schedule is sensitive to two things: the booking-system connector (WP-6.5) and how fast barbers can be recruited for the pilot.
 
 ### 4.5 Legal and regulatory feasibility: High for v1, Medium later
 
@@ -202,7 +212,8 @@ I'd stop or change course if any of these happen. Each maps to a kill criterion 
 
 ## Revision history
 
-| Version | Date       | Change                                                                                                                                                                                                                                                                                                                                                  | Author      |
-| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 1.0     | 2026-11-09 | First baseline                                                                                                                                                                                                                                                                                                                                          | S. Jannisar |
-| 1.1     | 2026-11-09 | Remediation after independent review: one pricing hypothesis ($1 per honored booking, $39 cap, 3 months free); 3-year table rebuilt with a stated shop scenario, NPV at 10% and reconciliation to the 16 budget ($4,140, $4,968 with contingency); schedule and effort from the resource-loaded plan; A-01 redesigned to 8 weeks with the new pass rule | S. Jannisar |
+| Version | Date       | Change                                                                                                                                                                                                                                                                                                                                                          | Author      |
+| ------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| 1.0     | 2026-11-09 | First baseline                                                                                                                                                                                                                                                                                                                                                  | S. Jannisar |
+| 1.1     | 2026-11-09 | Remediation after independent review: one pricing hypothesis ($1 per honored booking, $39 cap, 3 months free); 3-year table rebuilt with a stated shop scenario, NPV at 10% and reconciliation to the 16 budget ($4,140, $4,968 with contingency); schedule and effort from the resource-loaded plan; A-01 redesigned to 8 weeks with the new pass rule         | S. Jannisar |
+| 1.2     | 2026-11-09 | Second remediation after regrade: economics recomputed for the re-baselined plan (pilot live 2027-10-19, paying from February 2028; expansions a month later); staging hosting only from Phase 6; explicit no-expansion scenario (cumulative −$4,540, NPV ≈ −$4,080); scenario NPV ≈ −$880; budget reconciled at $4,320 ($5,184 with contingency); effort 716 h | S. Jannisar |

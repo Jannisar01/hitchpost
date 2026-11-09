@@ -3,7 +3,7 @@
 | Field       | Value                                                                                                                                                                                                            |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-16                                                                                                                                                                                                        |
-| Version     | 1.1                                                                                                                                                                                                              |
+| Version     | 1.2                                                                                                                                                                                                              |
 | Status      | Baselined for Phase 2                                                                                                                                                                                            |
 | Date        | 2026-11-09                                                                                                                                                                                                       |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                                                                                                                                 |
@@ -40,20 +40,22 @@ Estimates are three-point, in hours, for the lead plus AI pair: O optimistic, M 
 
 ### 3.1 Phase 2: Approval gate
 
-| WP      | Work package                                                                                                                       | Traces to                                    | O   | M   | P   | E         |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | --- | --- | --- | --------- |
-| WP-2.1  | Offer store: `issuedAt`, `expiresAt`, hold (P-01), reserved hold (P-02), `offer_declined`                                          | FR-BOOK-01, FR-BOOK-08                       | 6   | 10  | 16  | 10.3      |
-| WP-2.2  | `booking_request` as an A2A Task, WORKING while the shop decides, re-check at write; idempotency; ADR 0012                         | FR-BOOK-02, FR-BOOK-07, FR-MSG-10, FR-MSG-12 | 10  | 16  | 28  | 17.0      |
-| WP-2.3  | `Approval` type and the gate in my agent; client polling of `GetTask` (P-04); ADR 0013                                             | FR-GATE-01, FR-GATE-02, FR-GATE-04           | 6   | 10  | 18  | 10.7      |
-| WP-2.4  | Append-only audit log on both sides with correlation fields                                                                        | FR-GATE-03, FR-MSG-11                        | 5   | 8   | 14  | 8.5       |
-| WP-2.5  | Cancel, `cancel_rejected`, reschedule as an atomic swap                                                                            | FR-BOOK-03, FR-BOOK-10, FR-BOOK-11           | 8   | 14  | 24  | 14.7      |
-| WP-2.6  | Per-shop manual approval switch, shop decision through a command-line stand-in, timeout (P-03)                                     | FR-GATE-05                                   | 4   | 8   | 14  | 8.3       |
-| WP-2.7  | `packages/e2e` with contract tests; contract version as an `AgentCapabilities.extensions` entry                                    | FR-MSG-09, NFR-MAINT-01                      | 4   | 6   | 10  | 6.3       |
-| WP-2.8  | Persistence: SQLite through the SDK's `DatabaseTaskStore` plus offers, bookings and audit tables; JSONL audit on the personal side | NFR-REL-02                                   | 6   | 10  | 16  | 10.3      |
-| WP-2.9  | ADRs, documentation, gate audit                                                                                                    | NFR-MAINT-01                                 | 4   | 8   | 12  | 8.0       |
-| WP-2.10 | Validate the shop's book configuration at load (debt D-15)                                                                         | FR-BOOK-12                                   | 2   | 3   | 6   | 3.3       |
-| WP-2.11 | Open-holds cap (P-07) and basic per-IP rate limit (P-08)                                                                           | FR-BOOK-09, NFR-SEC-03                       | 3   | 5   | 8   | 5.2       |
-|         | **Phase 2 total**                                                                                                                  |                                              |     |     |     | **102.6** |
+| WP      | Work package                                                                                                                          | Traces to                                    | O   | M   | P   | E         |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- | --- | --- | --- | --------- |
+| WP-2.1  | Offer store: `issuedAt`, `expiresAt`, hold (P-01), reserved hold (P-02), `offer_declined`                                             | FR-BOOK-01, FR-BOOK-08                       | 6   | 10  | 16  | 10.3      |
+| WP-2.2  | `booking_request` as an A2A Task, WORKING while the shop decides, re-check at write; idempotency; ADR 0012                            | FR-BOOK-02, FR-BOOK-07, FR-MSG-10, FR-MSG-12 | 10  | 16  | 28  | 17.0      |
+| WP-2.3  | `Approval` type and the gate in my agent; client polling of `GetTask` (P-04); ADR 0013                                                | FR-GATE-01, FR-GATE-02, FR-GATE-04           | 6   | 10  | 18  | 10.7      |
+| WP-2.4  | Append-only audit log on both sides with correlation fields                                                                           | FR-GATE-03, FR-MSG-11                        | 5   | 8   | 14  | 8.5       |
+| WP-2.5  | Cancel, `cancel_rejected`, reschedule as an atomic swap                                                                               | FR-BOOK-03, FR-BOOK-10, FR-BOOK-11           | 8   | 14  | 24  | 14.7      |
+| WP-2.6  | Per-shop manual approval switch, shop decision through a command-line stand-in, timeout (P-03)                                        | FR-GATE-05                                   | 4   | 8   | 14  | 8.3       |
+| WP-2.7  | `packages/e2e` with contract tests; contract version as an `AgentCapabilities.extensions` entry                                       | FR-MSG-09, NFR-MAINT-01                      | 4   | 6   | 10  | 6.3       |
+| WP-2.8  | Persistence: SQLite through the SDK's `DatabaseTaskStore` plus offers, bookings and audit tables; JSONL audit on the personal side    | NFR-REL-02                                   | 6   | 10  | 16  | 10.3      |
+| WP-2.9  | ADRs, documentation, gate audit                                                                                                       | NFR-MAINT-01                                 | 4   | 8   | 12  | 8.0       |
+| WP-2.10 | Validate the shop's book configuration at load (debt D-15)                                                                            | FR-BOOK-12                                   | 2   | 3   | 6   | 3.3       |
+| WP-2.11 | Open-holds cap (P-07) and basic per-IP rate limit (P-08)                                                                              | FR-BOOK-09, NFR-SEC-03                       | 3   | 5   | 8   | 5.2       |
+| WP-2.12 | Clients declare the contract extension in the `A2A-Extensions` header (`ask.ts` now, the app later); contract test                    | FR-MSG-09                                    | 2   | 3   | 5   | 3.2       |
+| WP-2.13 | Server-minted capabilities (`offerId`, `bookingToken`), duplicate handling with `duplicateOf`, cutoff at reschedule question and swap | FR-MSG-12, FR-BOOK-07, FR-BOOK-11            | 3   | 5   | 8   | 5.2       |
+|         | **Phase 2 total**                                                                                                                     |                                              |     |     |     | **111.0** |
 
 ### 3.2 Phase 3: Directory
 
@@ -82,50 +84,51 @@ Estimates are three-point, in hours, for the lead plus AI pair: O optimistic, M 
 
 ### 3.4 Phase 5: Ratings
 
-| WP     | Work package                                                    | Traces to                              | O   | M   | P   | E        |
-| ------ | --------------------------------------------------------------- | -------------------------------------- | --- | --- | --- | -------- |
-| WP-5.1 | Interaction records and behaviour metrics                       | FR-RATE-02                             | 10  | 16  | 26  | 16.7     |
-| WP-5.2 | Reviews from verified interactions only; "Did it go as booked?" | FR-RATE-01, FR-RATE-03, FR-RATE-04     | 8   | 14  | 24  | 14.7     |
-| WP-5.3 | Reporting, suspension and moderation trail                      | FR-ADMIN-01, FR-ADMIN-02, UC-09, UC-10 | 10  | 16  | 28  | 17.0     |
-|        | **Phase 5 total**                                               |                                        |     |     |     | **48.4** |
+| WP     | Work package                                                                                       | Traces to                              | O   | M   | P   | E        |
+| ------ | -------------------------------------------------------------------------------------------------- | -------------------------------------- | --- | --- | --- | -------- |
+| WP-5.1 | Interaction records and behaviour metrics                                                          | FR-RATE-02                             | 10  | 16  | 26  | 16.7     |
+| WP-5.2 | Reviews from verified interactions only (hash attestation); customer "Did it go as booked?" prompt | FR-RATE-01, FR-RATE-03, FR-RATE-05     | 8   | 14  | 24  | 14.7     |
+| WP-5.3 | Reporting, suspension and moderation trail                                                         | FR-ADMIN-01, FR-ADMIN-02, UC-09, UC-10 | 10  | 16  | 28  | 17.0     |
+|        | **Phase 5 total**                                                                                  |                                        |     |     |     | **48.4** |
 
 - **WP-5.4** retired: the trust interviews moved to WP-0.4.
 
 ### 3.5 Phase 6: Production
 
-| WP      | Work package                                                                                        | Traces to                | O   | M   | P   | E         |
-| ------- | --------------------------------------------------------------------------------------------------- | ------------------------ | --- | --- | --- | --------- |
-| WP-6.1  | Hosting, staging and production environments, infrastructure as code, compile step; ADRs 0014, 0016 | NFR-REL-01               | 16  | 24  | 40  | 25.3      |
-| WP-6.2  | Agent-to-agent authentication and signed cards; ADR 0017                                            | NFR-SEC-02               | 16  | 24  | 40  | 25.3      |
-| WP-6.3  | Per-identity rate limits and abuse controls                                                         | NFR-SEC-03               | 6   | 10  | 16  | 10.3      |
-| WP-6.4  | Shop time zones; ADR 0018                                                                           | FR-BOOK-05               | 8   | 12  | 20  | 12.7      |
-| WP-6.5  | Connector to one real booking system over MCP, with conditional writes                              | FR-BOOK-06, A-03         | 20  | 36  | 60  | 37.3      |
-| WP-6.6  | Observability, trace ids, SLOs, alerts, backups, tested restore                                     | NFR-OBS-01, NFR-REL-01   | 12  | 20  | 32  | 20.7      |
-| WP-6.7  | Privacy notice, retention jobs (P-11 to P-15), export and delete                                    | NFR-PRIV-01, NFR-PRIV-02 | 10  | 16  | 26  | 16.7      |
-| WP-6.8  | Pre-release security audit, external human review, fixes                                            | NFR-SEC-01 to NFR-SEC-05 | 12  | 20  | 36  | 21.3      |
-| WP-6.9  | Pilot run, stage S2 ([17 Transition plan](17-transition-plan.md)), 12 weeks                         | G-1, G-2                 | 30  | 45  | 70  | 46.7      |
-| WP-6.10 | Hosted business agents, one subdomain each, per-tenant keys in a KMS; Postgres `slot_claims`        | FR-DIR-01, NFR-REL-02    | 10  | 16  | 28  | 17.0      |
-| WP-6.11 | Closed alpha, stage S1: 2 barbers, 10 people, 3 weeks on staging                                    | RC 1                     | 10  | 16  | 26  | 16.7      |
-|         | **Phase 6 total**                                                                                   |                          |     |     |     | **250.0** |
+| WP      | Work package                                                                                                                                                | Traces to                | O   | M   | P   | E         |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | --- | --- | --- | --------- |
+| WP-6.1  | Hosting, staging and production environments, infrastructure as code, compile step; ADRs 0014, 0016                                                         | NFR-REL-01               | 16  | 24  | 40  | 25.3      |
+| WP-6.2  | Agent-to-agent authentication and signed cards; ADR 0017                                                                                                    | NFR-SEC-02               | 16  | 24  | 40  | 25.3      |
+| WP-6.3  | Per-identity rate limits and abuse controls                                                                                                                 | NFR-SEC-03               | 6   | 10  | 16  | 10.3      |
+| WP-6.4  | Shop time zones; ADR 0018                                                                                                                                   | FR-BOOK-05               | 8   | 12  | 20  | 12.7      |
+| WP-6.5  | Connector to one real booking system over MCP, with conditional writes                                                                                      | FR-BOOK-06, A-03         | 20  | 36  | 60  | 37.3      |
+| WP-6.6  | Observability, trace ids, SLOs, alerts, backups, tested restore                                                                                             | NFR-OBS-01, NFR-REL-01   | 12  | 20  | 32  | 20.7      |
+| WP-6.7  | Privacy notice, retention jobs (P-11 to P-15), export and delete                                                                                            | NFR-PRIV-01, NFR-PRIV-02 | 10  | 16  | 26  | 16.7      |
+| WP-6.8  | Pre-release security audit, external human review, fixes                                                                                                    | NFR-SEC-01 to NFR-SEC-05 | 12  | 20  | 36  | 21.3      |
+| WP-6.9  | Pilot run, stage S2 ([17 Transition plan](17-transition-plan.md)), 12 weeks                                                                                 | G-1, G-2                 | 30  | 45  | 70  | 46.7      |
+| WP-6.10 | Hosted business agents, one subdomain each, per-tenant keys in a KMS; Postgres `slot_claims`                                                                | FR-DIR-01, NFR-REL-02    | 10  | 16  | 28  | 17.0      |
+| WP-6.11 | Closed alpha, stage S1: 2 barbers, 10 people, 3 weeks on staging                                                                                            | RC 1                     | 10  | 16  | 26  | 16.7      |
+| WP-6.12 | Third-party interop: an A2A agent not written by me books end to end on staging (TC-64); owner: me; the agent author is recruited through the A2A community | RC 6, NFR-INT-01         | 6   | 10  | 16  | 10.3      |
+|         | **Phase 6 total**                                                                                                                                           |                          |     |     |     | **260.3** |
 
 ## 4. Estimate summary
 
 | Block            | E (hours) | σ (hours) |
 | ---------------- | --------- | --------- |
 | Discovery        | 83.3      | 6.9       |
-| 2. Approval gate | 102.6     | 5.9       |
+| 2. Approval gate | 111.0     | 6.0       |
 | 3. Directory     | 68.7      | 6.0       |
 | 4. Client app    | 144.0     | 9.9       |
 | 5. Ratings       | 48.4      | 4.8       |
-| 6. Production    | 250.0     | 13.3      |
-| **Total**        | **697.0** | **20.4**  |
+| 6. Production    | 260.3     | 13.4      |
+| **Total**        | **715.7** | **20.5**  |
 
 σ per work package is (P − O) / 6. The total σ is the square root of the sum of the variances.
 
-- **P80** ≈ E + 0.84σ ≈ **714 hours**. **P95** ≈ E + 1.65σ ≈ **731 hours**.
-- PERT assumes work packages are independent, which understates real risk: a slow WP-6.5 also delays WP-6.11 and WP-6.9. A **20% management reserve gives about 836 hours**.
+- **P80** ≈ E + 0.84σ ≈ **733 hours**. **P95** ≈ E + 1.65σ ≈ **750 hours**.
+- PERT assumes work packages are independent, which understates real risk: a slow WP-6.5 also delays WP-6.11 and WP-6.9. A **20% management reserve (143 hours, which the round-up rule in section 5 makes 10 weeks) gives about 859 hours**.
 - **Capacity:** 15 hours a week (**estimate** of sustainable solo time), with 2 holiday weeks at each year end. Re-planned if actual capacity runs below 12 hours a week for 4 weeks in a row.
-- **What changed from version 1.0:** the 1.0 plan scheduled 624 hours of build at 15 hours a week while also running discovery in parallel, as if discovery took no hours. It also put 170 hours of Phase 6 work into the 7 weeks before the pilot. Loading everything onto one person moves the v1 decision from 2027-10-19 to **2028-01-18**.
+- **What changed from version 1.0:** the 1.0 plan scheduled 624 hours of build at 15 hours a week while also running discovery in parallel, as if discovery took no hours. It also put 170 hours of Phase 6 work into the 7 weeks before the pilot. Loading everything onto one person moved the v1 decision from 2027-10-19 to 2028-01-18 in version 1.1. Version 1.2 adds WP-2.12, WP-2.13 and WP-6.12, applies the round-up rule to every block, and stops counting the two holiday weeks as pilot time; the v1 decision is now **2028-02-08**.
 
 ## 5. Schedule
 
@@ -142,25 +145,28 @@ Seven working weeks (105 hours; 2026-12-21 to 2027-01-03 is holiday) hold:
 | WP-0.3 A-05 analysis                                          | 10.3     | Uses the WP-0.2 data                                                                                                                                                                               |
 | WP-2.10 Book configuration validation                         | 3.3      | **Protocol-safe:** fixes a real gap in Built code; worth keeping if the project stops                                                                                                              |
 | WP-2.7 e2e package and contract tests                         | 6.3      | **Protocol-safe:** hardens the Phase 1 reference implementation                                                                                                                                    |
+| WP-2.12 Contract extension header in `ask.ts`                 | 3.2      | **Protocol-safe:** without it no client can talk to a Phase 2 agent at all; it fixes the reference client whatever A-01 says                                                                       |
 | WP-2.9 part: ADR 0012 implementation notes and ADR 0013 draft | 4.0      | **Protocol-safe:** ADR 0012 (accepted 2026-11-09) fixes the booking protocol; turning it into contract-test fixtures and drafting ADR 0013 is useful to anyone building on A2A, whatever A-01 says |
-| **Total**                                                     | **90.6** | 14.4 hours of slack absorb interview scheduling                                                                                                                                                    |
+| **Total**                                                     | **93.8** | 11.2 hours of slack absorb interview scheduling                                                                                                                                                    |
 
 Nothing else in Phase 2 starts until M-01 records a pass on A-01 and A-04.
 
 ### 5.2 Build windows
 
-| Block                               | Hours | Weeks | Start      | End (milestone)   |
-| ----------------------------------- | ----- | ----- | ---------- | ----------------- |
-| Phase 2 rest (102.6 − 13.6)         | 89.0  | 6     | 2027-01-12 | 2027-02-23 (M-03) |
-| Phase 3                             | 68.7  | 5     | 2027-02-23 | 2027-03-30 (M-04) |
-| Phase 4                             | 144.0 | 10    | 2027-03-30 | 2027-06-08 (M-05) |
-| Phase 5 plus WP-0.4                 | 54.7  | 4     | 2027-06-08 | 2027-07-06 (M-06) |
-| Phase 6 before the pilot (incl. S1) | 203.3 | 14    | 2027-07-06 | 2027-10-12 (M-07) |
-| Pilot S2 (WP-6.9, about 4 h a week) | 46.7  | 12    | 2027-10-12 | 2028-01-04        |
-| Holidays inside the pilot           |       | 2     | 2027-12-20 | 2028-01-02        |
-| Pilot review and v1 decision        |       | 2     | 2028-01-04 | 2028-01-18 (M-08) |
+| Block                                                                         | Hours | Weeks         | Start      | End (milestone)   |
+| ----------------------------------------------------------------------------- | ----- | ------------- | ---------- | ----------------- |
+| Phase 2 rest (111.0 − 16.8)                                                   | 94.2  | 7             | 2027-01-12 | 2027-03-02 (M-03) |
+| Phase 3                                                                       | 68.7  | 5             | 2027-03-02 | 2027-04-06 (M-04) |
+| Phase 4                                                                       | 144.0 | 10            | 2027-04-06 | 2027-06-15 (M-05) |
+| Phase 5 plus WP-0.4                                                           | 54.7  | 4             | 2027-06-15 | 2027-07-13 (M-06) |
+| Phase 6 before the pilot (incl. S1; staging from WP-6.1)                      | 203.3 | 14            | 2027-07-13 | 2027-10-19 (M-07) |
+| Pilot S2 (WP-6.9 and WP-6.12, about 5 h a week), 12 active weeks              | 57.0  | 14            | 2027-10-19 | 2028-01-25        |
+| Holiday pause inside the pilot (listings paused, [17](17-transition-plan.md)) |       | (2 of the 14) | 2027-12-20 | 2028-01-02        |
+| Pilot review and v1 decision                                                  |       | 2             | 2028-01-25 | 2028-02-08 (M-08) |
 
-**Reserve.** During the pilot about 11 hours a week are free, about 130 hours in total, which absorbs most of the 139-hour reserve if overruns happen there. If the reserve is consumed **before** the pilot, M-07 slides by up to 9 weeks and M-08 to **2028-03-21** at the latest. So the honest target for the v1 decision is **2028-01-18, no later than the end of Q1 2028**.
+**Reserve.** The pilot has 12 working weeks (180 hours) and needs 57, so about **123 hours** are free; that absorbs most of the 143-hour reserve if overruns happen there. If the reserve is consumed **before** the pilot, M-07 slides by 10 weeks (the round-up rule) plus the 2-week holiday it then crosses, to 2028-01-11, and M-08 to **2028-04-18** at the latest. So the honest target for the v1 decision is **2028-02-08, no later than 2028-04-18**.
+
+**RC measurement window.** RC 1 and RC 2 are measured over the 4 active pilot weeks 2027-11-22 to 2027-12-19, so the window never straddles the holiday pause. The 3 active weeks after the pause are for fixes and the pilot review.
 
 ```mermaid
 gantt
@@ -171,45 +177,46 @@ gantt
     WP-0.1 Wizard-of-Oz 8 weeks (A-01, A-04)    :d1, 2026-11-16, 2027-01-10
     WP-0.2 Interviews, audit, scan (A-02, A-03, A-07) :d2, 2026-11-16, 2026-12-18
     WP-0.3 A-05 analysis                          :d3, 2027-01-04, 2027-01-12
-    WP-0.4 Trust interviews (A-06)                :d4, 2027-06-08, 2027-07-06
+    WP-0.4 Trust interviews (A-06)                :d4, 2027-06-15, 2027-07-13
     section Build
-    Protocol-safe work (WP-2.7, 2.10, ADR notes)   :b0, 2026-11-10, 2026-12-18
+    Protocol-safe work (WP-2.7, 2.10, 2.12, ADR notes) :b0, 2026-11-10, 2026-12-18
     Holidays                                      :crit, h1, 2026-12-21, 2027-01-03
-    Phase 2 Approval gate                         :p2, 2027-01-12, 2027-02-23
-    Phase 3 Directory                             :p3, 2027-02-23, 2027-03-30
-    Phase 4 Client app and dashboard              :p4, 2027-03-30, 2027-06-08
-    Phase 5 Ratings                               :p5, 2027-06-08, 2027-07-06
-    Phase 6 before pilot                          :p6, 2027-07-06, 2027-10-12
-    S1 closed alpha on staging                    :s1, 2027-09-14, 2027-10-05
-    S2 pilot                                      :s2, 2027-10-12, 2028-01-04
-    Holidays                                      :crit, h2, 2027-12-20, 2028-01-02
+    Phase 2 Approval gate                         :p2, 2027-01-12, 2027-03-02
+    Phase 3 Directory                             :p3, 2027-03-02, 2027-04-06
+    Phase 4 Client app and dashboard              :p4, 2027-04-06, 2027-06-15
+    Phase 5 Ratings                               :p5, 2027-06-15, 2027-07-13
+    Phase 6 before pilot                          :p6, 2027-07-13, 2027-10-19
+    S1 closed alpha on staging                    :s1, 2027-09-21, 2027-10-12
+    S2 pilot                                      :s2, 2027-10-19, 2028-01-25
+    RC 1 and RC 2 measurement window              :rc, 2027-11-22, 2027-12-19
+    Holiday pause, listings paused                :crit, h2, 2027-12-20, 2028-01-02
     section Milestones
     M-01 A-01 and A-04 results                    :milestone, m1, 2027-01-12, 0d
     M-02 A-02, A-03, A-05, A-07 results           :milestone, m2, 2027-01-12, 0d
-    M-03 Phase 2 gate                             :milestone, m3, 2027-02-23, 0d
-    M-04 Phase 3 gate                             :milestone, m4, 2027-03-30, 0d
-    M-05 Phase 4 gate                             :milestone, m5, 2027-06-08, 0d
-    M-06 Phase 5 gate                             :milestone, m6, 2027-07-06, 0d
-    M-07 Pilot go-live                            :milestone, m7, 2027-10-12, 0d
-    M-08 v1 release decision                      :milestone, m8, 2028-01-18, 0d
+    M-03 Phase 2 gate                             :milestone, m3, 2027-03-02, 0d
+    M-04 Phase 3 gate                             :milestone, m4, 2027-04-06, 0d
+    M-05 Phase 4 gate                             :milestone, m5, 2027-06-15, 0d
+    M-06 Phase 5 gate                             :milestone, m6, 2027-07-13, 0d
+    M-07 Pilot go-live                            :milestone, m7, 2027-10-19, 0d
+    M-08 v1 release decision                      :milestone, m8, 2028-02-08, 0d
 ```
 
-**Critical path:** discovery window → Phase 2 → 3 → 4 → 5 → 6 (WP-6.1 staging → WP-6.11 S1 → go/no-go) → S2 → M-08. Discovery is on it: if A-01 fails at M-01, everything after stops. WP-6.5 (connector) is the least certain item before the pilot.
+**Critical path:** discovery window → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 (WP-6.1 staging → WP-6.11 S1 → go/no-go) → S2 → M-08. Discovery is on it: if A-01 fails at M-01, everything after stops. WP-6.5 (connector) is the least certain item before the pilot.
 
 ## 6. Milestones and phase-gate exit criteria
 
 A gate passes only when every criterion holds. The v1 release criteria (RC) are the six numbered criteria in [01 Vision and scope](01-vision-and-scope.md).
 
-| Milestone          | Date       | Exit criteria                                                                                                                                                                                                                                               | Traces to              |
-| ------------------ | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
-| M-01               | 2027-01-12 | A-01 (8 weeks) and A-04 measured against their kill criteria; decision recorded; protocol-safe work merged                                                                                                                                                  | A-01, A-04             |
-| M-02               | 2027-01-12 | A-02, A-03, A-05 and A-07 measured; booking-tool shortlist chosen                                                                                                                                                                                           | A-02, A-03, A-05, A-07 |
-| M-03 Phase 2 gate  | 2027-02-23 | No booking without a logged approval, proven by tests; no double booking under concurrent requests; offers, bookings and audit survive a restart; audit logs complete for UC-02 to UC-04; gate audit has no open high findings; ADRs 0012 and 0013 accepted | RC 1, RC 3             |
-| M-04 Phase 3 gate  | 2027-03-30 | Verified registration works and unverified is refused; card origin check enforced; search works against the seeded directory                                                                                                                                | RC 3, RC 6             |
-| M-05 Phase 4 gate  | 2027-06-08 | A person completes UC-02 end to end in the app; Marcus accepts and declines in the dashboard; approval screen shows only validated data; WCAG 2.2 AA audit has no open blockers; gate audit clean                                                           | RC 1, RC 2             |
-| M-06 Phase 5 gate  | 2027-07-06 | Only verified interactions can be rated; outcomes recorded from both sides; report and takedown works end to end with a moderation trail                                                                                                                    | RC 2, RC 3             |
-| M-07 Pilot go-live | 2027-10-12 | S1 exit criteria met; go/no-go checklist in [17 Transition plan](17-transition-plan.md) section 7 fully met                                                                                                                                                 | RC 3, RC 4, RC 5       |
-| M-08 v1 decision   | 2028-01-18 | All six RC hold; otherwise extend the pilot, or apply the kill criteria in [03](03-business-case.md)                                                                                                                                                        | RC 1 to RC 6           |
+| Milestone          | Date       | Exit criteria                                                                                                                                                                                                                                                                                                                                                                           | Traces to              |
+| ------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------- |
+| M-01               | 2027-01-12 | A-01 (8 weeks) and A-04 measured against their kill criteria; decision recorded; protocol-safe work merged                                                                                                                                                                                                                                                                              | A-01, A-04             |
+| M-02               | 2027-01-12 | A-02, A-03, A-05 and A-07 measured; booking-tool shortlist chosen                                                                                                                                                                                                                                                                                                                       | A-02, A-03, A-05, A-07 |
+| M-03 Phase 2 gate  | 2027-03-02 | No booking without a logged approval, proven by tests; our clients send the contract extension header (TC-51); duplicate retries and capability tokens behave per TC-36 and TC-48; no double booking under concurrent requests; offers, bookings and audit survive a restart; audit logs complete for UC-02 to UC-04; gate audit has no open high findings; ADRs 0012 and 0013 accepted | RC 1, RC 3             |
+| M-04 Phase 3 gate  | 2027-04-06 | Verified registration works and unverified is refused; card origin check enforced; search works against the seeded directory                                                                                                                                                                                                                                                            | RC 3, RC 6             |
+| M-05 Phase 4 gate  | 2027-06-15 | A person completes UC-02 end to end in the app; Marcus accepts and declines in the dashboard and marks outcomes (FR-RATE-04); approval screen shows only validated data; WCAG 2.2 AA audit has no open blockers; gate audit clean                                                                                                                                                       | RC 1, RC 2             |
+| M-06 Phase 5 gate  | 2027-07-13 | Only verified interactions (matching hashes, TC-87) can be rated; the customer outcome prompt works (FR-RATE-05); report and takedown works end to end with a moderation trail                                                                                                                                                                                                          | RC 2, RC 3             |
+| M-07 Pilot go-live | 2027-10-19 | S1 exit criteria met; go/no-go checklist in [17 Transition plan](17-transition-plan.md) section 7 fully met                                                                                                                                                                                                                                                                             | RC 3, RC 4, RC 5       |
+| M-08 v1 decision   | 2028-02-08 | All six RC hold (RC 6 through WP-6.12); otherwise extend the pilot, or apply the kill criteria in [03](03-business-case.md)                                                                                                                                                                                                                                                             | RC 1 to RC 6           |
 
 ## 7. Resourcing and budget
 
@@ -226,19 +233,19 @@ A gate passes only when every criterion holds. The v1 release criteria (RC) are 
 
 ### 7.2 Cash budget to the v1 decision (estimates)
 
-November 2026 to January 2028, 15 months. This is the one budget figure for the package; [02 Feasibility study](02-feasibility-study.md) section 4.2 reconciles to it.
+November 2026 to February 2028, 16 months. This is the one budget figure for the package; [02 Feasibility study](02-feasibility-study.md) section 4.2 reconciles to it.
 
-| Item                                     | Basis                                                                            | Amount     |
-| ---------------------------------------- | -------------------------------------------------------------------------------- | ---------- |
-| AI pair and tools                        | About $100 a month × 15                                                          | $1,500     |
-| Domain and DNS                           | 2 years                                                                          | $40        |
-| Staging hosting                          | About $10 a month, February to June 2027 (5 months)                              | $50        |
-| Production hosting                       | About $50 a month, July 2027 to January 2028 (7 months)                          | $350       |
-| Research incentives                      | 15 × $25 (8-week Wizard-of-Oz) + 10 × $25 (barbers) + 5 × $15 (trust interviews) | $700       |
-| Legal review of privacy notice and terms | One-off                                                                          | $1,500     |
-| **Subtotal**                             |                                                                                  | **$4,140** |
-| Contingency                              | 20%                                                                              | $828       |
-| **Total to v1**                          |                                                                                  | **$4,968** |
+| Item                                     | Basis                                                                                           | Amount     |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------- |
+| AI pair and tools                        | About $100 a month × 16                                                                         | $1,600     |
+| Domain and DNS                           | 2 years                                                                                         | $40        |
+| Staging hosting                          | About $10 a month, July 2027 to February 2028 (8 months; staging exists from WP-6.1 in Phase 6) | $80        |
+| Production hosting                       | About $50 a month, July 2027 to February 2028 (8 months)                                        | $400       |
+| Research incentives                      | 15 × $25 (8-week Wizard-of-Oz) + 10 × $25 (barbers) + 5 × $15 (trust interviews)                | $700       |
+| Legal review of privacy notice and terms | One-off                                                                                         | $1,500     |
+| **Subtotal**                             |                                                                                                 | **$4,320** |
+| Contingency                              | 20%                                                                                             | $864       |
+| **Total to v1**                          |                                                                                                 | **$5,184** |
 
 GitHub Actions and hosting the public repository cost nothing. The external human review (WP-6.8) is assumed unpaid; if it's paid, it comes out of contingency.
 
@@ -273,7 +280,7 @@ Changes to scope, schedule or a baselined document use the one change process in
 
 ### 9.2 Decision process
 
-Architecturally significant or hard-to-reverse choices get an ADR in [docs/decisions](../decisions/README.md) before the code that depends on them merges ([ADR 0001](../decisions/0001-record-decisions.md)). ADRs 0012 (booking protocol) and 0018 (time zones, implemented in Phase 6) are accepted. Planned: 0013 (Phase 2), 0015 (Phase 3), 0014, 0016 and 0017 (Phase 6).
+Architecturally significant or hard-to-reverse choices get an ADR in [docs/decisions](../decisions/README.md) before the code that depends on them merges ([ADR 0001](../decisions/0001-record-decisions.md)). ADRs 0012 (booking protocol) and 0018 (time zones, implemented in Phase 6) are accepted. 0013 to 0017 are written as proposals, each with a decide-by milestone: 0013 (M-03), 0015 (M-04), 0014, 0016 and 0017 (before M-07).
 
 ### 9.3 Configuration management
 
@@ -307,3 +314,4 @@ Architecturally significant or hard-to-reverse choices get an ADR in [docs/decis
 | ------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
 | 1.0     | 2026-11-09 | First baseline                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | S. Jannisar |
 | 1.1     | 2026-11-09 | Remediation after independent review: plan resource-loaded on one person at 15 h a week; discovery work packages WP-0.1 to WP-0.4 (A-01 now 8 weeks); protocol-safe work defined for the A-01 window; new WP-2.8 persistence, WP-2.10 book validation, WP-2.11 holds cap and rate limit, WP-4.7 barber dashboard (`packages/dashboard`), WP-6.10 hosted agents per subdomain, WP-6.11 S1 closed alpha on staging; estimate 697 h (P95 731, 836 with reserve); milestones re-baselined, M-07 2027-10-12, M-08 2028-01-18 (latest 2028-03-21); one budget figure, $4,140 ($4,968 with contingency), reconciled with 02; change process `docs-change` | S. Jannisar |
+| 1.2     | 2026-11-09 | Second remediation after regrade: added WP-2.12 (extension header), WP-2.13 (capability tokens, duplicates, reschedule cutoff) and WP-6.12 (RC 6 third-party interop); totals 715.7 h (P95 750, 859 with reserve); round-up rule applied (reserve 10 weeks) and the pilot holiday pause no longer counted as pilot time; M-03 2027-03-02, M-07 2027-10-19, M-08 2028-02-08 (latest 2028-04-18); RC 1 and RC 2 window before the pause; staging hosting only from Phase 6; budget $4,320 ($5,184 with contingency); ADRs 0013 to 0017 written as proposals                                                                                          | S. Jannisar |

@@ -3,7 +3,7 @@
 | Field       | Value                                                                                                   |
 | ----------- | ------------------------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-08                                                                                               |
-| Version     | 1.1                                                                                                     |
+| Version     | 1.2                                                                                                     |
 | Status      | Baselined for Phase 2                                                                                   |
 | Date        | 2026-11-09                                                                                              |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                        |
@@ -77,7 +77,8 @@ erDiagram
     int priceCents
     string currency
     string issuedAt
-    string expiresAt
+    string expiresAt "never changes"
+    string reservedUntil "set when Reserved"
     string state
     string replacesBookingId FK "optional"
     string taskId UK "set by booking_request"
@@ -93,6 +94,8 @@ erDiagram
     string businessId FK
     string offerId FK,UK
     string customerRef
+    string bookingTokenHash "SHA-256 of bookingToken"
+    string cancelTaskId UK "set by cancel_request"
     string start
     int durationMinutes
     string status
@@ -123,6 +126,8 @@ erDiagram
     string contextId
     string outcome
     int latencyMs
+    string offerHash "matches both sides' audit"
+    string decisionHash "matches both sides' audit"
   }
   REVIEW {
     string reviewId PK
@@ -147,41 +152,42 @@ erDiagram
 
 ## 2. Entities
 
-| Entity                | Owner (stores it)                                  | Privacy class                | Status                                | Notes                                                                                                     |
-| --------------------- | -------------------------------------------------- | ---------------------------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| Person                | Personal side (app)                                | Personal                     | Phase 4                               | Never sent to business agents beyond what a booking needs (NFR-PRIV-01).                                  |
-| Business              | Business agent; public subset in the directory     | Public                       | Phase 2 (agent), Phase 3 (directory)  | `approvalMode`, `cancellationCutoffMinutes` (P-10) live with the agent.                                   |
-| Agent                 | Each agent publishes its own card                  | Public                       | Built                                 | Card in `barberCard()`.                                                                                   |
-| Service, OpeningHours | Business agent                                     | Public                       | Built (as `Book`)                     | `Book.services`, `Book.hours` in `book.ts`. Hours become minutes of the local day in Phase 6 (ADR 0018).  |
-| Booking               | Business agent                                     | Personal                     | Built (as `Book.booked`, time ranges) | Phase 2 adds `bookingId`, `status`, `customerRef`, `replacesBookingId`.                                   |
-| Offer                 | Business agent stores; personal agent keeps a copy | Personal                     | Phase 2                               | Built only as a message type (`Offer` in `core/src/booking.ts`). FR-BOOK-01.                              |
-| Approval              | Personal agent only                                | Personal                     | Phase 2                               | Never leaves the personal side; the business sees only `booking_request` or `offer_declined`. FR-GATE-02. |
-| AuditEvent            | Each side, own log                                 | Personal                     | Phase 2                               | Append-only, correlation ids from Phase 2. FR-GATE-03.                                                    |
-| DirectoryListing      | Directory                                          | Public                       | Phase 3                               | FR-DIR-01..03.                                                                                            |
-| Contact               | Personal side (app)                                | Personal                     | Phase 4                               | Listing link optional: contacts added by URL have none. FR-APP-01.                                        |
-| InteractionRecord     | Ratings service, built from both sides' logs       | Personal (pseudonymous)      | Phase 5                               | One per booking; outcome includes `no_show`. FR-RATE-02.                                                  |
-| Review                | Ratings service                                    | Public text, personal author | Phase 5                               | Only on a verified interaction. FR-RATE-01.                                                               |
-| Report                | Directory                                          | Personal (reporter)          | Phase 5 to 6                          | FR-ADMIN-01.                                                                                              |
+| Entity                | Owner (stores it)                                  | Privacy class                | Status                                | Notes                                                                                                                                                                                       |
+| --------------------- | -------------------------------------------------- | ---------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Person                | Personal side (app)                                | Personal                     | Phase 4                               | Never sent to business agents beyond what a booking needs (NFR-PRIV-01).                                                                                                                    |
+| Business              | Business agent; public subset in the directory     | Public                       | Phase 2 (agent), Phase 3 (directory)  | `approvalMode`, `cancellationCutoffMinutes` (P-10) live with the agent.                                                                                                                     |
+| Agent                 | Each agent publishes its own card                  | Public                       | Built                                 | Card in `barberCard()`.                                                                                                                                                                     |
+| Service, OpeningHours | Business agent                                     | Public                       | Built (as `Book`)                     | `Book.services`, `Book.hours` in `book.ts`. Hours become minutes of the local day in Phase 6 (ADR 0018).                                                                                    |
+| Booking               | Business agent                                     | Personal                     | Built (as `Book.booked`, time ranges) | Phase 2 adds `bookingId`, `status`, `customerRef`, `replacesBookingId`, and `bookingTokenHash` (the `bookingToken` itself is never stored).                                                 |
+| Offer                 | Business agent stores; personal agent keeps a copy | Personal                     | Phase 2                               | Built only as a message type (`Offer` in `core/src/booking.ts`). FR-BOOK-01.                                                                                                                |
+| Approval              | Personal agent only                                | Personal                     | Phase 2                               | Never leaves the personal side; the business sees only `booking_request` or `offer_declined`. FR-GATE-02.                                                                                   |
+| AuditEvent            | Each side, own log                                 | Personal                     | Phase 2                               | Append-only, correlation ids from Phase 2. FR-GATE-03.                                                                                                                                      |
+| DirectoryListing      | Directory                                          | Public                       | Phase 3                               | FR-DIR-01..03.                                                                                                                                                                              |
+| Contact               | Personal side (app)                                | Personal                     | Phase 4                               | Listing link optional: contacts added by URL have none. FR-APP-01.                                                                                                                          |
+| InteractionRecord     | Ratings service, built from both sides' logs       | Personal (pseudonymous)      | Phase 5                               | One per booking; outcome includes `no_show`. Accepted only when both sides' audit hashes of the offer and the decision match (Phase 5); signatures added in Phase 6 (ADR 0017). FR-RATE-02. |
+| Review                | Ratings service                                    | Public text, personal author | Phase 5                               | Only on a verified interaction. FR-RATE-01.                                                                                                                                                 |
+| Report                | Directory                                          | Personal (reporter)          | Phase 5 to 6                          | FR-ADMIN-01.                                                                                                                                                                                |
 
 No entity holds payment data before a payments ADR. Calendars are never copied: the personal agent writes one event and keeps only the booking reference (NFR-PRIV-01).
 
 ## 3. Integrity rules
 
-| Rule                                                                                                     | Enforced where                                                                        | Status                             |
-| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ---------------------------------- |
-| No two bookings overlap in a business's book                                                             | `findFreeSlot` overlap check (Built); Phase 6 `slot_claims` exclusion constraint (§4) | Built (search), Phase 6 (database) |
-| Held and reserved offers count as taken                                                                  | Offer store consulted by slot search; re-checked inside the booking write transaction | Phase 2                            |
-| A booking needs an unexpired offer from the same `contextId`                                             | Booking handler, one transaction: read offer, re-check slot, write booking            | Phase 2                            |
-| One booking per offer; a repeated `booking_request` returns the same Task                                | `UK` on `Booking.offerId` and `Offer.taskId`                                          | Phase 2                            |
-| Open holds per `contextId` and per sender are capped (P-07)                                              | Offer store count before issuing                                                      | Phase 2                            |
-| An Approval names exactly one offer and is made before the local deadline                                | `Approval` type, created only by the gate; deadline per P-09                          | Phase 2                            |
-| Audit events are never updated or deleted, except by retention (P-12)                                    | Append-only interface; `seq` monotonic; `prevHash` chain                              | Phase 2 (chain Phase 6)            |
-| A review needs a verified interaction                                                                    | Ratings ingest                                                                        | Phase 5                            |
-| A listing's card URL origin equals its verified origin                                                   | Directory on register and on every card refresh                                       | Phase 3                            |
-| All instants stored in UTC                                                                               | `toInstant` in `core/src/booking.ts`                                                  | Built                              |
-| Shop hours in the shop's IANA zone                                                                       | ADR 0018                                                                              | Phase 6                            |
-| The shop's own `Book` configuration is valid (hours, unique services, currency, parseable booked ranges) | Validation at load; invalid config refuses to start (D-15)                            | Phase 2                            |
-| `Contact.listingId`, `Booking.customerRef`, cross-store `FK`s                                            | Logical references, checked by the owning service; no cross-store constraint          | Phase 3 to 5                       |
+| Rule                                                                                                                     | Enforced where                                                                        | Status                             |
+| ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | ---------------------------------- |
+| No two bookings overlap in a business's book                                                                             | `findFreeSlot` overlap check (Built); Phase 6 `slot_claims` exclusion constraint (§4) | Built (search), Phase 6 (database) |
+| Held and reserved offers count as taken                                                                                  | Offer store consulted by slot search; re-checked inside the booking write transaction | Phase 2                            |
+| A booking needs an unexpired offer issued by this business (the `offerId` is the capability; `contextId` is not checked) | Booking handler, one transaction: read offer, re-check slot, write booking            | Phase 2                            |
+| One booking per offer; a resent `booking_request` gets the original result with `duplicateOf`                            | `UK` on `Booking.offerId` and `Offer.taskId`                                          | Phase 2                            |
+| Cancel and reschedule need the booking's `bookingToken`                                                                  | Compare SHA-256 of the presented token with `bookingTokenHash`                        | Phase 2                            |
+| Open holds per sender are capped (P-07)                                                                                  | Offer store count before issuing                                                      | Phase 2                            |
+| An Approval names exactly one offer and is made before the local deadline                                                | `Approval` type, created only by the gate; deadline per P-09                          | Phase 2                            |
+| Audit events are never updated or deleted, except by retention (P-12)                                                    | Append-only interface; `seq` monotonic; `prevHash` chain                              | Phase 2 (chain Phase 6)            |
+| A review needs a verified interaction                                                                                    | Ratings ingest                                                                        | Phase 5                            |
+| A listing's card URL origin equals its verified origin                                                                   | Directory on register and on every card refresh                                       | Phase 3                            |
+| All instants stored in UTC                                                                                               | `toInstant` in `core/src/booking.ts`                                                  | Built                              |
+| Shop hours in the shop's IANA zone                                                                                       | ADR 0018                                                                              | Phase 6                            |
+| The shop's own `Book` configuration is valid (hours, unique services, currency, parseable booked ranges)                 | Validation at load; invalid config refuses to start (D-15)                            | Phase 2                            |
+| `Contact.listingId`, `Booking.customerRef`, cross-store `FK`s                                                            | Logical references, checked by the owning service; no cross-store constraint          | Phase 3 to 5                       |
 
 ## 4. Storage by phase
 
@@ -232,8 +238,9 @@ The retention job (event E-14 in [07](07-process-and-behaviour-models.md)) appli
 
 ## Revision history
 
-| Version | Date       | Change                                                                                                                                               | Author      |
-| ------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 0.1     | 2026-11-08 | First draft                                                                                                                                          | S. Jannisar |
-| 1.0     | 2026-11-09 | Baselined: renumbered into lifecycle order, formal document control, standards conformance                                                           | S. Jannisar |
-| 1.1     | 2026-11-09 | Remediation after independent review: ERD with keys, retention via P-IDs, SQLite/JSONL in Phase 2, `slot_claims` exclusion table, time zones Phase 6 | S. Jannisar |
+| Version | Date       | Change                                                                                                                                                                                                                                                                         | Author      |
+| ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| 0.1     | 2026-11-08 | First draft                                                                                                                                                                                                                                                                    | S. Jannisar |
+| 1.0     | 2026-11-09 | Baselined: renumbered into lifecycle order, formal document control, standards conformance                                                                                                                                                                                     | S. Jannisar |
+| 1.1     | 2026-11-09 | Remediation after independent review: ERD with keys, retention via P-IDs, SQLite/JSONL in Phase 2, `slot_claims` exclusion table, time zones Phase 6                                                                                                                           | S. Jannisar |
+| 1.2     | 2026-11-09 | Second remediation after regrade: `reservedUntil` on Offer (`expiresAt` never changes); `bookingTokenHash` and `cancelTaskId` on Booking; interaction record hashes for Phase 5 attestation; integrity rules use capabilities and a per-sender hold cap instead of `contextId` | S. Jannisar |

@@ -3,7 +3,7 @@
 | Field       | Value                                                                                   |
 | ----------- | --------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-18                                                                               |
-| Version     | 1.1                                                                                     |
+| Version     | 1.2                                                                                     |
 | Status      | Baselined for Phase 2                                                                   |
 | Date        | 2026-11-09                                                                              |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                        |
@@ -58,7 +58,7 @@ flowchart LR
 ```
 
 - **Preview deploys** (Phase 3): each PR gets its own directory and app URL, torn down on merge.
-- **Staging** deploys automatically from `main`.
+- **Staging** (from Phase 6, WP-6.1) deploys automatically from `main`.
 - **Production** deploys only from a release tag, after the [release exit criteria](15-test-strategy.md#11-release-exit-criteria).
 - **Rollback** means redeploying the previous tag. Database migrations must be backward compatible for one release so rollback is always safe.
 - **Build step:** before hosting, packages need a compile step (ADR 0016). Today `exports` point at `.ts` source, which only works locally ([19](19-maintenance-and-evolution.md), debt D-02).
@@ -82,7 +82,7 @@ Proposed as ADR 0014 (one container platform plus managed Postgres). The options
 | AWS (ECS Fargate + RDS)                             | Scales anywhere, every compliance box                                   | Higher, more ops work | Overkill for one-area pilot                                |
 | Serverless functions (Vercel)                       | Fine for the app front end                                              | Low                   | Poor fit for long agent tasks and streaming                |
 
-**Proposed (ADR 0014):** option A. One container platform (Fly.io or Render) with managed Postgres. The directory (which also hosts the admin pages), the ratings service, the barber dashboard and the hosted business agents run there. The app front end goes on a static or edge host. The vendor choice between Fly.io and Render is confirmed with a pilot cost estimate before Phase 6.
+**Proposed (ADR 0014):** option A. One container platform (Fly.io or Render) with managed Postgres. The directory (which also hosts the admin pages), the ratings service, the barber dashboard (from Phase 4) and the hosted business agents run there. The app front end goes on a static or edge host. The vendor choice between Fly.io and Render is confirmed with a pilot cost estimate before Phase 6.
 
 - **Hosted business agents get one subdomain each**, `<slug>.agents.hitchpost.dev`, served by the same container. One origin per shop is what lets origin verification tell hosted shops apart, and it keeps each agent card at its own origin root as `.well-known` requires (RFC 8615).
 - **Bookings stay correct with more than one instance:** holds and bookings live in one Postgres `slot_claims` table with a time-range exclusion constraint per business, so two instances can't claim the same slot. With a real booking system over MCP, the write must be conditional or atomic on that system (FR-BOOK-06).
@@ -100,7 +100,7 @@ Proposed as ADR 0014 (one container platform plus managed Postgres). The options
 ## 7. Observability
 
 - **Logs:** structured JSON, one line per request.
-  - **Fields:** request id, agent, method, outcome, latency, and from Phase 2 the correlation fields `contextId`, `taskId`, `offerId`, `messageId` (FR-MSG-11). `contextId` is a bearer capability until agent authentication, so logs that hold it are access-controlled like the audit log.
+  - **Fields:** request id, agent, method, outcome, latency, and from Phase 2 the correlation fields `contextId`, `taskId`, `offerId`, `messageId` (FR-MSG-11). `contextId` is client-chosen and used for correlation only. The capabilities (`offerId`, `bookingToken`) are logged only as hashes, never in clear.
   - **No message bodies, no personal data** (see [12](12-security-and-privacy.md#retention-deletion-and-export)).
   - **Retention:** 30 days.
 - **Metrics:** requests by outcome (`offer`, `no_availability`, `rejected`, error), latency histograms, approvals and declines, bookings, rate-limit hits, card-fetch failures.
@@ -135,7 +135,7 @@ One dashboard per service: traffic, errors, latency, saturation, plus a product 
 ## 8. Incident response (runbook outline)
 
 1. **Detect:** an alert or a user report (issue, email, in-app).
-2. **Triage:** SEV1 means bookings wrong or lost, or a security breach. SEV2 means the service is down or degraded. SEV3 means minor.
+2. **Triage:** assign a severity from the single [SEV table in 19](19-maintenance-and-evolution.md#1-support-model).
 3. **Mitigate first:** roll back to the previous tag, turn on rate limits, or delist an abusive agent.
 4. **Communicate:** a status note on the repo and to affected businesses. For SEV1, update every hour. Response targets per severity are P-17, kept in [19](19-maintenance-and-evolution.md#1-support-model).
 5. **Resolve and verify** against the SLO dashboard.
@@ -144,7 +144,7 @@ One dashboard per service: traffic, errors, latency, saturation, plus a product 
 
 ## 9. Backups and disaster recovery
 
-Backups follow P-15: a daily full backup plus continuous WAL, expiring after 35 days, with no separate cold-storage export. Expiry is what lets an erasure request (P-13) also reach backups within 30 days plus the backup window.
+Backups follow P-15: a daily full backup plus continuous WAL, expiring after 30 days, with no separate cold-storage export. Expiry is what lets an erasure request (P-13) also reach backups: erased from live systems within 30 days, gone from backups within 60 days at most.
 
 | Data                              | Backup                                                                                     | RPO                                                                 | RTO     |
 | --------------------------------- | ------------------------------------------------------------------------------------------ | ------------------------------------------------------------------- | ------- |
@@ -170,3 +170,4 @@ Backups follow P-15: a daily full backup plus continuous WAL, expiring after 35 
 | 0.1     | 2026-11-08 | First draft                                                                                                                                                                                                                                                                                                                                                                                                                                    | S. Jannisar |
 | 1.0     | 2026-11-09 | Baselined: renumbered into lifecycle order, formal document control, standards conformance                                                                                                                                                                                                                                                                                                                                                     | S. Jannisar |
 | 1.1     | 2026-11-09 | Remediation after independent review: contract version as an `AgentCapabilities.extensions` entry, major versions only (P-18); hosted agents one subdomain each and `slot_claims` exclusion constraint; card signing and revocation specified; correlation fields from Phase 2; SLOs mapped to the right NFRs and operational targets marked; backups per P-15 with no cold-storage export; zero-loss vs RPO stated; staging created before S1 | S. Jannisar |
+| 1.2     | 2026-11-09 | Second remediation after regrade: triage cites the single SEV table in 19; backups expire after 30 days (P-15); logs record capabilities only as hashes, contextId is correlation only                                                                                                                                                                                                                                                         | S. Jannisar |

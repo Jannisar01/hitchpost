@@ -3,7 +3,7 @@
 | Field       | Value                                                                                                           |
 | ----------- | --------------------------------------------------------------------------------------------------------------- |
 | Document ID | HP-SAD-00                                                                                                       |
-| Version     | 1.1                                                                                                             |
+| Version     | 1.2                                                                                                             |
 | Status      | Baselined for Phase 2                                                                                           |
 | Date        | 2026-11-09                                                                                                      |
 | Owner       | Sanaullah Jannisar, product and engineering lead                                                                |
@@ -83,48 +83,48 @@ These standards are paywalled; the mapping follows their published outlines and 
 
 ### 5.1 ISO/IEC/IEEE 29148:2018, requirements engineering
 
-| Information item                                                                      | Where                                                | Conformance                                                                                                                |
-| ------------------------------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| BRS: business purpose, scope, business environment                                    | 01 sections 1 to 4; 03 section 1                     | Full                                                                                                                       |
-| BRS: business model, goals, stakeholders                                              | 01 goals; 03 section 2; 04 stakeholder map           | Partial: the pricing hypothesis is untested (A-04 in 03)                                                                   |
-| StRS: stakeholder needs, operational concept, user characteristics                    | 04 personas and journeys                             | Partial: personas are assumptions until the A-01 and A-02 discovery work (16) produces real interview data                 |
-| StRS: operational scenarios                                                           | 06 use cases                                         | Full                                                                                                                       |
-| SyRS/SRS: functional requirements, uniquely identified                                | 05 functional requirements (FR-*)                    | Full                                                                                                                       |
-| SyRS/SRS: performance, usability, security, reliability, maintainability requirements | 05 non-functional requirements (NFR-*); 11 scenarios | Partial: performance targets are unmeasured until Phase 6 load tests                                                       |
-| SyRS/SRS: interfaces (external, user, software, communications)                       | 13 interfaces; 14 UI design                          | Full                                                                                                                       |
-| SyRS/SRS: design constraints, assumptions, dependencies                               | 05 constraints; 03 assumptions                       | Full                                                                                                                       |
-| Verification method per requirement                                                   | 05 traceability matrix; 15 requirement coverage      | Partial: Phase 2+ test cases are identified, not yet written                                                               |
-| Requirement attributes (priority, source, status)                                     | 05 tables (phase, status, source)                    | Partial: priority is expressed as phase, not a separate MoSCoW field                                                       |
-| Requirements quality review (necessary, unambiguous, verifiable)                      | Section 8 of this document                           | Partial: reviews so far were run as AI agents under my direction; no independent human review yet (planned before Phase 6) |
+| Information item                                                                      | Where                                                | Conformance                                                                                                                                                                          |
+| ------------------------------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| BRS: business purpose, scope, business environment                                    | 01 sections 1 to 4; 03 section 1                     | Full                                                                                                                                                                                 |
+| BRS: business model, goals, stakeholders                                              | 01 goals; 03 section 2; 04 stakeholder map           | Partial: the pricing hypothesis is untested (A-04 in 03)                                                                                                                             |
+| StRS: stakeholder needs, operational concept, user characteristics                    | 04 personas and journeys                             | Partial: personas are assumptions until the A-01 and A-02 discovery work (16) produces real interview data                                                                           |
+| StRS: operational scenarios                                                           | 06 use cases                                         | Full                                                                                                                                                                                 |
+| SyRS/SRS: functional requirements, uniquely identified                                | 05 functional requirements (FR-*)                    | Full                                                                                                                                                                                 |
+| SyRS/SRS: performance, usability, security, reliability, maintainability requirements | 05 non-functional requirements (NFR-*); 11 scenarios | Partial: performance targets are unmeasured until Phase 6 load tests                                                                                                                 |
+| SyRS/SRS: interfaces (external, user, software, communications)                       | 13 interfaces; 14 UI design                          | Partial: the Phase 2 protocol rules (extension header, duplicate handling, capability tokens) are checked against SDK 1.3 source but not yet proven by tests (TC-36, TC-48 to TC-50) |
+| SyRS/SRS: design constraints, assumptions, dependencies                               | 05 constraints; 03 assumptions                       | Full                                                                                                                                                                                 |
+| Verification method per requirement                                                   | 05 traceability matrix; 15 requirement coverage      | Partial: Phase 2+ test cases are identified, not yet written                                                                                                                         |
+| Requirement attributes (priority, source, status)                                     | 05 tables (phase, status, source)                    | Partial: priority is expressed as phase, not a separate MoSCoW field                                                                                                                 |
+| Requirements quality review (necessary, unambiguous, verifiable)                      | Section 8 of this document                           | Partial: reviews so far were run as AI agents under my direction; no independent human review yet (planned before Phase 6)                                                           |
 
 ### 5.2 ISO/IEC/IEEE 42010:2022, architecture description
 
-| Element                                                     | Where                                                                            | Conformance                                                                                           |
-| ----------------------------------------------------------- | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Identification and overview of the architecture description | 10 opening and section 1                                                         | Full                                                                                                  |
-| Stakeholders and their concerns                             | 04 stakeholder map; 10 section 1 drivers                                         | Full                                                                                                  |
-| Viewpoints (named, with concerns and model kinds)           | 10 viewpoint catalogue                                                           | Partial: catalogue added in the 1.1 remediation; not yet reviewed against the standard's full content |
-| Views and models                                            | 10 C4 diagrams; 07 behaviour models; 08 data model                               | Full                                                                                                  |
-| Correspondences between views                               | 10 correspondence rules; 05 traceability matrix                                  | Partial: rules stated; not mechanically checked                                                       |
-| Architecture rationale and decisions                        | 10 decisions section; ADRs 0001 to 0012 and 0018 accepted, 0013 to 0017 proposed | Partial: five of the seven Phase 2+ decisions are still proposals                                     |
-| Known issues and open questions                             | 19 tech-debt register; 10 open proposals                                         | Full                                                                                                  |
+| Element                                                     | Where                                                                                        | Conformance                                                                                           |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Identification and overview of the architecture description | 10 opening and section 1                                                                     | Full                                                                                                  |
+| Stakeholders and their concerns                             | 04 stakeholder map; 10 section 1 drivers                                                     | Full                                                                                                  |
+| Viewpoints (named, with concerns and model kinds)           | 10 viewpoint catalogue                                                                       | Partial: catalogue added in the 1.1 remediation; not yet reviewed against the standard's full content |
+| Views and models                                            | 10 C4 diagrams; 07 behaviour models; 08 data model                                           | Full                                                                                                  |
+| Correspondences between views                               | 10 correspondence rules; 05 traceability matrix                                              | Partial: rules stated; not mechanically checked                                                       |
+| Architecture rationale and decisions                        | 10 decisions section; ADRs 0001 to 0012 and 0018 accepted, 0013 to 0017 written as proposals | Partial: five of the seven Phase 2+ decisions are still proposals, each with a decide-by milestone    |
+| Known issues and open questions                             | 19 tech-debt register; 10 open proposals                                                     | Full                                                                                                  |
 
 ### 5.3 IEEE 1016-2009, software design descriptions
 
-| Design viewpoint | Where                                                                   | Conformance                                 |
-| ---------------- | ----------------------------------------------------------------------- | ------------------------------------------- |
-| Context          | 10 context view                                                         | Full                                        |
-| Composition      | 10 container and component views                                        | Full                                        |
-| Logical          | 08 domain model                                                         | Full                                        |
-| Dependency       | 10 component view; package graph in `pnpm-workspace.yaml`               | Full                                        |
-| Information      | 08 data design; 09 data dictionary                                      | Full                                        |
-| Patterns use     | 10 cross-cutting concerns                                               | Partial: patterns named, not catalogued     |
-| Interface        | 13 interfaces; 14 UI design                                             | Full                                        |
-| Structure        | 10 component view                                                       | Full                                        |
-| Interaction      | 10 sequences; 06 use cases                                              | Full                                        |
-| State dynamics   | 07 state machines                                                       | Full                                        |
-| Algorithm        | 07 decision tables; slot finding in `packages/barber-agent/src/book.ts` | Full                                        |
-| Resource         | 18 capacity and cost notes; 11 performance scenarios                    | Partial: no load measurements until Phase 6 |
+| Design viewpoint | Where                                                                   | Conformance                                                                 |
+| ---------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Context          | 10 context view                                                         | Full                                                                        |
+| Composition      | 10 container and component views                                        | Full                                                                        |
+| Logical          | 08 domain model                                                         | Full                                                                        |
+| Dependency       | 10 component view; package graph in `pnpm-workspace.yaml`               | Full                                                                        |
+| Information      | 08 data design; 09 data dictionary                                      | Full                                                                        |
+| Patterns use     | 10 cross-cutting concerns                                               | Partial: patterns named, not catalogued                                     |
+| Interface        | 13 interfaces; 14 UI design                                             | Full                                                                        |
+| Structure        | 10 component view                                                       | Full                                                                        |
+| Interaction      | 10 sequences; 06 use cases                                              | Partial: Phase 2 sequences are checked against SDK source, not yet executed |
+| State dynamics   | 07 state machines                                                       | Full                                                                        |
+| Algorithm        | 07 decision tables; slot finding in `packages/barber-agent/src/book.ts` | Full                                                                        |
+| Resource         | 18 capacity and cost notes; 11 performance scenarios                    | Partial: no load measurements until Phase 6                                 |
 
 ### 5.4 ISO/IEC/IEEE 29119-3:2021, test documentation
 
@@ -152,24 +152,24 @@ These standards are paywalled; the mapping follows their published outlines and 
 
 ### 5.6 ISO/IEC/IEEE 12207:2017 and 15288:2023, lifecycle processes
 
-| Process                                       | Where                                                                                  | Conformance                                                      |
-| --------------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| Business or mission analysis                  | 01, 02, 03                                                                             | Full                                                             |
-| Stakeholder needs and requirements definition | 04, 06                                                                                 | Partial: no stakeholder interviews yet                           |
-| System and software requirements definition   | 05                                                                                     | Full                                                             |
-| Architecture definition                       | 10, 11                                                                                 | Full                                                             |
-| Design definition                             | 07, 08, 09, 13, 14                                                                     | Full                                                             |
-| Implementation                                | Code under `packages/`; [CONTRIBUTING.md](../../CONTRIBUTING.md)                       | Full for Phase 1                                                 |
-| Verification and validation                   | 15; Phase 1 audit                                                                      | Partial: validation with real users not yet run                  |
-| Transition                                    | 17                                                                                     | Partial: planned, not executed                                   |
-| Operation                                     | 18                                                                                     | Partial: planned, not executed                                   |
-| Maintenance                                   | 19                                                                                     | Partial: planned, not executed                                   |
-| Project planning, assessment and control      | 16                                                                                     | Full                                                             |
-| Risk management                               | 03 risks; 12 threat model                                                              | Full                                                             |
-| Configuration management                      | Section 7 of this document; git; [ADR 0005](../decisions/0005-ci-and-review-policy.md) | Partial: branch protection not on until the repository is pushed |
-| Information management                        | This document                                                                          | Full                                                             |
-| Quality assurance                             | 15; CI gates; section 8 reviews                                                        | Partial: CI has not yet run on GitHub                            |
-| Disposal                                      | 19 sunset and end of life                                                              | Partial: planned                                                 |
+| Process                                       | Where                                                                                  | Conformance                                                                    |
+| --------------------------------------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Business or mission analysis                  | 01, 02, 03                                                                             | Full                                                                           |
+| Stakeholder needs and requirements definition | 04, 06                                                                                 | Partial: no stakeholder interviews yet                                         |
+| System and software requirements definition   | 05                                                                                     | Full                                                                           |
+| Architecture definition                       | 10, 11                                                                                 | Full                                                                           |
+| Design definition                             | 07, 08, 09, 13, 14                                                                     | Full                                                                           |
+| Implementation                                | Code under `packages/`; [CONTRIBUTING.md](../../CONTRIBUTING.md)                       | Full for Phase 1                                                               |
+| Verification and validation                   | 15; Phase 1 audit                                                                      | Partial: validation with real users not yet run                                |
+| Transition                                    | 17                                                                                     | Partial: planned, not executed                                                 |
+| Operation                                     | 18                                                                                     | Partial: planned, not executed                                                 |
+| Maintenance                                   | 19                                                                                     | Partial: planned, not executed                                                 |
+| Project planning, assessment and control      | 16                                                                                     | Partial: resource-loaded and re-baselined; no progress measured against it yet |
+| Risk management                               | 03 risks; 12 threat model                                                              | Full                                                                           |
+| Configuration management                      | Section 7 of this document; git; [ADR 0005](../decisions/0005-ci-and-review-policy.md) | Partial: branch protection not on until the repository is pushed               |
+| Information management                        | This document                                                                          | Full                                                                           |
+| Quality assurance                             | 15; CI gates; section 8 reviews                                                        | Partial: CI has not yet run on GitHub                                          |
+| Disposal                                      | 19 sunset and end of life                                                              | Partial: planned                                                               |
 
 ## 6. Baseline and change control
 
@@ -255,28 +255,28 @@ This section is the single source for values and phases. Other documents cite th
 
 ### 10.1 Parameter register
 
-| ID   | Parameter                                                                 | Value                                                                                                                            |
-| ---- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| P-01 | Offer hold                                                                | 10 min from `issuedAt`                                                                                                           |
-| P-02 | Reserved hold (after `booking_request` accepted, shop on manual approval) | Until the shop decides, max 30 min (P-03)                                                                                        |
-| P-03 | Manual approval wait                                                      | 30 min, then `booking_rejected` with reason `shop_timeout`                                                                       |
-| P-04 | Personal agent booking deadline                                           | 35 min (P-03 + 5 min); polls `GetTask` every 10 s, backing off to 60 s                                                           |
-| P-05 | Availability request deadline                                             | 10 s for the whole exchange (Built)                                                                                              |
-| P-06 | Max search window                                                         | 31 days (Built)                                                                                                                  |
-| P-07 | Open holds cap                                                            | 3 per `contextId` and 3 per sender; sender is the client IP until agent authentication (Phase 6), then the agent identity        |
-| P-08 | Rate limit                                                                | 60 requests per minute per sender; basic per-IP limit in Phase 2, per-identity in Phase 6                                        |
-| P-09 | Clock margin                                                              | The personal agent treats an offer as expired 30 s before its local deadline: receivedAt + (expiresAt - issuedAt)                |
-| P-10 | Cancellation cutoff                                                       | None by default; per shop (`cancellationCutoffMinutes`)                                                                          |
-| P-11 | Retention: expired or declined offers                                     | 7 days                                                                                                                           |
-| P-12 | Retention: bookings, audit events, interaction records                    | 2 years, then deleted (not anonymised); aggregates are kept without personal fields                                              |
-| P-13 | Retention after account deletion                                          | Personal data erased within 30 days, including from backups by expiry (P-15)                                                     |
-| P-14 | Retention: resolved reports                                               | 1 year                                                                                                                           |
-| P-15 | Backups                                                                   | Daily full plus continuous WAL; RPO 5 min for infrastructure loss; backups expire after 35 days; no separate cold-storage export |
-| P-16 | Security patching                                                         | Critical CVE within 48 hours; high within 7 days; others in the next release                                                     |
-| P-17 | Support response targets                                                  | SEV1 1 h, SEV2 4 business hours, SEV3 next release; community issues triaged within 5 days                                       |
-| P-18 | Contract version support                                                  | Each major version is supported for 6 months after its successor ships                                                           |
-| P-19 | Text field limit                                                          | 1 to 200 characters, no control characters (Built)                                                                               |
-| P-20 | Price cap and duration cap                                                | 0 to 10,000,000 cents; 1 to 1,440 minutes (Built)                                                                                |
+| ID   | Parameter                                                                 | Value                                                                                                                                                                                                                                           |
+| ---- | ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| P-01 | Offer hold                                                                | 10 min from `issuedAt`                                                                                                                                                                                                                          |
+| P-02 | Reserved hold (after `booking_request` accepted, shop on manual approval) | Until the shop decides, max 30 min (P-03)                                                                                                                                                                                                       |
+| P-03 | Manual approval wait                                                      | 30 min, then `booking_rejected` with reason `shop_timeout`                                                                                                                                                                                      |
+| P-04 | Personal agent booking deadline                                           | 35 min (P-03 + 5 min); polls `GetTask` every 10 s, backing off to 60 s                                                                                                                                                                          |
+| P-05 | Availability request deadline                                             | 10 s for the whole exchange (Built)                                                                                                                                                                                                             |
+| P-06 | Max search window                                                         | 31 days (Built)                                                                                                                                                                                                                                 |
+| P-07 | Open holds cap                                                            | 3 per sender; sender is the client IP until agent authentication (Phase 6), then the agent identity. No per-`contextId` cap: clients choose `contextId`                                                                                         |
+| P-08 | Rate limit                                                                | 60 requests per minute per sender; basic per-IP limit in Phase 2, per-identity in Phase 6                                                                                                                                                       |
+| P-09 | Clock margin                                                              | The personal agent treats an offer as expired 30 s before its local deadline: receivedAt + (expiresAt - issuedAt)                                                                                                                               |
+| P-10 | Cancellation cutoff                                                       | None by default; per shop (`cancellationCutoffMinutes`)                                                                                                                                                                                         |
+| P-11 | Retention: expired or declined offers                                     | 7 days                                                                                                                                                                                                                                          |
+| P-12 | Retention: bookings, audit events, interaction records                    | 2 years, then deleted (not anonymised); aggregates are kept without personal fields                                                                                                                                                             |
+| P-13 | Retention after account deletion                                          | Personal data erased from live systems within 30 days; backup copies expire within P-15 (30 days), so fully gone within 60 days                                                                                                                 |
+| P-14 | Retention: resolved reports                                               | 1 year                                                                                                                                                                                                                                          |
+| P-15 | Backups                                                                   | Daily full plus continuous WAL; RPO 5 min for infrastructure loss; backups expire after 30 days; no separate cold-storage export                                                                                                                |
+| P-16 | Security patching                                                         | Critical CVE within 48 hours; high within 7 days; others in the next release                                                                                                                                                                    |
+| P-17 | Support response targets                                                  | SEV1 1 h, SEV2 4 business hours, SEV3 next release; community issues triaged within 5 days. Severity definitions: the single SEV table in [19](19-maintenance-and-evolution.md). No SEV1 cover is promised while pilot listings are paused (17) |
+| P-18 | Contract version support                                                  | Each major version is supported for 6 months after its successor ships                                                                                                                                                                          |
+| P-19 | Text field limit                                                          | 1 to 200 characters, no control characters (Built)                                                                                                                                                                                              |
+| P-20 | Price cap and duration cap                                                | 0 to 10,000,000 cents; 1 to 1,440 minutes (Built)                                                                                                                                                                                               |
 
 **Zero loss and RPO.** No confirmed booking is ever lost: the booking write is committed synchronously before `booking_confirmed` is sent, so a crash either leaves no booking and no confirmation, or both. The 5-minute RPO in P-15 applies to everything else (offers, audit tail, directory edits) and to loss of a whole region.
 
@@ -284,29 +284,31 @@ This section is the single source for values and phases. Other documents cite th
 
 One row per capability that more than one document places in time. If a document disagrees with this table, this table wins and the document is a defect.
 
-| Capability                                                                                                                 | Phase             |
-| -------------------------------------------------------------------------------------------------------------------------- | ----------------- |
-| Typed availability request and offer over A2A; strict validation; whole-exchange deadline                                  | 1 (Built)         |
-| Offer hold and expiry, `offer_declined`, booking as an A2A Task, approval gate, cancel, reschedule                         | 2                 |
-| Manual shop approval (Task stays WORKING; client polls `GetTask`)                                                          | 2                 |
-| Business-side persistence: SQLite (SDK `DatabaseTaskStore` plus offers, bookings, audit tables); personal-side JSONL audit | 2                 |
-| Basic per-IP rate limit (P-08) and open-holds cap (P-07)                                                                   | 2                 |
-| Correlation fields (`contextId`, `taskId`, `offerId`, `messageId`) on every audit event                                    | 2                 |
-| Shop configuration (`Book`) validated at load                                                                              | 2                 |
-| Contract version as an `AgentCapabilities.extensions` entry                                                                | 2                 |
-| Directory, listing verification, search                                                                                    | 3                 |
-| Client app, built-in personal agent, calendar write                                                                        | 4                 |
-| Barber dashboard, including manual approval queue and outcome marking                                                      | 4                 |
-| Ratings from verified interactions; "Did it go as booked?"                                                                 | 5                 |
-| Time zones (IANA zone per shop, local slot grid, DST rules; ADR 0018)                                                      | 6                 |
-| Agent authentication, signed agent cards, per-identity rate limits                                                         | 6                 |
-| One subdomain per hosted business agent                                                                                    | 6                 |
-| Postgres with `slot_claims` exclusion constraint; multi-instance hosting                                                   | 6                 |
-| Real booking system over MCP with conditional writes                                                                       | 6                 |
-| Trace ids, SLO dashboards, alerting                                                                                        | 6                 |
-| First real booking (pilot)                                                                                                 | 6                 |
-| Shop-side cancellation pushed to the customer                                                                              | Later             |
-| Payments                                                                                                                   | Later (not in v1) |
+| Capability                                                                                                                                                 | Phase             |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| Typed availability request and offer over A2A; strict validation; whole-exchange deadline                                                                  | 1 (Built)         |
+| Offer hold and expiry, `offer_declined`, booking as an A2A Task, approval gate, cancel, reschedule                                                         | 2                 |
+| Manual shop approval (Task stays WORKING; client polls `GetTask`)                                                                                          | 2                 |
+| Business-side persistence: SQLite (SDK `DatabaseTaskStore` plus offers, bookings, audit tables); personal-side JSONL audit                                 | 2                 |
+| Basic per-IP rate limit (P-08) and open-holds cap (P-07)                                                                                                   | 2                 |
+| Correlation fields (`contextId`, `taskId`, `offerId`, `messageId`) on every audit event                                                                    | 2                 |
+| Shop configuration (`Book`) validated at load                                                                                                              | 2                 |
+| Contract version as an `AgentCapabilities.extensions` entry, declared by clients in the `A2A-Extensions` header                                            | 2                 |
+| Server-minted capabilities: `offerId` authorises booking, `bookingToken` authorises cancel and reschedule; `contextId` is for correlation only             | 2                 |
+| Directory, listing verification, search                                                                                                                    | 3                 |
+| Client app, built-in personal agent, calendar write                                                                                                        | 4                 |
+| Barber dashboard, including manual approval queue and outcome marking (FR-RATE-04)                                                                         | 4                 |
+| Ratings from verified interactions; customer "Did it go as booked?" prompt (FR-RATE-05); interaction records attested by matching JCS hashes on both sides | 5                 |
+| Time zones (IANA zone per shop, local slot grid, DST rules; ADR 0018)                                                                                      | 6                 |
+| Agent authentication, signed agent cards, signed interaction records, per-identity rate limits (ADR 0017)                                                  | 6                 |
+| Staging environment (WP-6.1) and staging smoke tests                                                                                                       | 6                 |
+| One subdomain per hosted business agent                                                                                                                    | 6                 |
+| Postgres with `slot_claims` exclusion constraint; multi-instance hosting                                                                                   | 6                 |
+| Real booking system over MCP with conditional writes                                                                                                       | 6                 |
+| Trace ids, SLO dashboards, alerting                                                                                                                        | 6                 |
+| First real booking (pilot)                                                                                                                                 | 6                 |
+| Shop-side cancellation pushed to the customer                                                                                                              | Later             |
+| Payments                                                                                                                                                   | Later (not in v1) |
 
 ## Revision history
 
@@ -314,3 +316,4 @@ One row per capability that more than one document places in time. If a document
 | ------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
 | 1.0     | 2026-11-09 | First baseline                                                                                                                                                                                                                                                                                                                                                                                                | S. Jannisar |
 | 1.1     | 2026-11-09 | Remediation after independent review: added section 10 (parameter register P-01 to P-20, phase map); conformance downgraded to Partial where evidence is thin; reviews disclosed as Claude Code agents run under my direction; self-approval and planned external review stated; consistency check described with its limits; one change process name (`docs-change`); register no longer duplicates versions | S. Jannisar |
+| 1.2     | 2026-11-09 | Second remediation after regrade: P-07 per sender only; P-13 and P-15 reconciled (30-day backups, fully erased within 60 days); phase map adds staging (Phase 6), capability tokens, the extension header, the FR-RATE-04/05 split and signed interaction records (Phase 6); interfaces, interaction and project-planning conformance set to Partial                                                          | S. Jannisar |
