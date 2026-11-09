@@ -133,6 +133,28 @@ Storing offers so an approval can be checked against them (finding 5) _is_ the a
 
 22 passing, up from 11: 9 for slot finding, 7 for message validation, 6 end to end over A2A (including a sneaky barber agent, a raw free-text message and an agent that never answers).
 
+---
+
+## 2026-11-08 · System analysis and design, vision to maintenance
+
+Before Phase 2, I wanted the whole system designed end to end, not just the next step. I set up a twelve-document [system analysis and design set](../sad/README.md) that runs from vision through requirements, architecture, security, testing and operations to maintenance after launch. It starts from what's built today and designs forward to production.
+
+### How I ran it
+
+- **I wrote the index first**: phases, ID formats, personas, the use case list and a seed set of core requirement IDs. Then I split the writing four ways to run in parallel. Fixing the shared vocabulary up front was what made parallel writing safe.
+- **I relayed decisions between writers as they landed.** When the architecture doc settled message names, retention periods and hosting, I passed them to the writers still working, so the documents agree instead of needing a rewrite.
+- **I cross-checked the whole set mechanically**: every requirement, use case, risk and threat ID referenced is defined, every link resolves, message names match across seven documents, and every test name cited exists in the code.
+
+### Decisions I made during the review
+
+- **Contract version lives in the agent card, not in every message.** The requirements draft said otherwise. Declaring it once on the card is simpler and matches how A2A agents already advertise what they support.
+- **Timing defaults:** an offer holds a slot for 10 minutes, a shop's manual approval waits 30 minutes, there's no cancellation cutoff unless a shop sets one, and each sender is limited to 60 requests a minute. Each has its reasoning in [09 Interfaces](../sad/09-interfaces.md#timing-defaults-phase-2).
+- **Standing approval for shops by default**, with a switch for owners who want to approve each booking. To be confirmed in barber interviews (assumption A-02).
+
+### What it produced
+
+Goals, 8 assumptions with kill criteria, 12 risks, about 50 requirements with a traceability matrix, 10 use cases, C4 architecture and Phase 2 sequences, a domain model, a versioned message contract, 22 threats, a test strategy mapped to requirements, deployment and incident plans, and a 13-item tech-debt register. Seven new decision records (0012 to 0018) are proposed in the design and get written as each phase reaches them.
+
 ### Next
 
 Phase 2: the approval gate. Offer, then my yes or no, then a booking, with stored offers, an audit log on both sides and tests proving nothing books without approval.

@@ -74,6 +74,7 @@ pnpm --filter @hitchpost/my-agent start
 
 I'm building Hitchpost as an AI-led engineering project: I set the direction, make and record the decisions and review every change, with Claude Code as my engineering partner. The process is part of the portfolio:
 
+- [System analysis and design](docs/sad/README.md): twelve documents from vision through requirements, architecture, security, testing and operations to maintenance.
 - [Build journey](docs/journey/README.md): key moments, phase by phase.
 - [Decision records](docs/decisions/README.md): every major choice and why.
 - [Bug and fix log](docs/bugs.md): what broke and how it was fixed.
