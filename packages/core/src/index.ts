@@ -1,4 +1,5 @@
-// Walking skeleton (ADR 0009). Replaced by real protocol code in Phase 1.
+export * from "./a2a.ts";
+export * from "./booking.ts";
 
 export type Decision = "approved" | "declined";
 
